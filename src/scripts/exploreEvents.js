@@ -9,27 +9,45 @@ import puppeteer from 'puppeteer';
 const CONFIG_Roundhouse = {
   venue: 'Roundhouse',
   eventsUrl: 'https://www.roundhouse.org.uk/whats-on/?type=event',
-  loadingFinishedSelector: '.card-view',
   eventCardSelector: '.event-card',
   eventCardArtistSelector: '.event-card__title',
   eventCardDateSelector: '.event-card__details',
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: '.button--loadmore',
-  cookiePolicyModalSelector: '.cookie-policy__popup',
-  cookiePolicyModalAcceptButtonSelector: '.button--primary',
+  cookiePolicyModalAcceptButtonSelector: '.cookie-policy__popup .button--primary',
 };
 
 const CONFIG_EartH = {
   venue: 'EartH',
   eventsUrl: 'https://earthackney.co.uk/events/',
-  loadingFinishedSelector: '.list--events',
   eventCardSelector: '.list--events__item',
   eventCardArtistSelector: '.list--events__item__title',
   eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
   eventCardDescriptionSelector: '.list--events__item__description',
   loadMoreButtonSelector: undefined,
-  cookiePolicyModalSelector: undefined,
   cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_Omeara = {
+  venue: 'Omeara',
+  eventsUrl: 'https://omearalondon.com/events/?event-type=live&currentpage=1',
+  eventCardSelector: '.events-grid-view__event-card',
+  eventCardArtistSelector: '.event-title',
+  eventCardDateSelector: '.event-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.cky-btn-accept',
+};
+
+const CONFIG_UnionChapel = {
+  venue: 'UnionChapel',
+  eventsUrl: 'https://unionchapel.org.uk/whats-on',
+  eventCardSelector: '.card',
+  eventCardArtistSelector: '.card-inner > p.card-title',
+  eventCardDateSelector: '.card-inner > p > strong',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '#cookiescript_accept',
 };
 
 const CONFIG = CONFIG_Roundhouse;
@@ -54,7 +72,7 @@ const CONFIG = CONFIG_Roundhouse;
 
   console.log('waiting for page to load...');
   // Wait for something that signifies the page is loaded
-  await page.waitForSelector(CONFIG.loadingFinishedSelector);
+  await page.waitForSelector(CONFIG.eventCardSelector);
   console.log('page has loaded');
 
   while (true) {
@@ -105,13 +123,22 @@ const CONFIG = CONFIG_Roundhouse;
  * @param {object} page The browser page object
  */
 async function maybeAcknowledgeCookieModal(page) {
-  if (!CONFIG.cookiePolicyModalSelector) {
+  if (!CONFIG.cookiePolicyModalAcceptButtonSelector) {
     return;
   }
 
-  const cookieModal = await page.$(CONFIG.cookiePolicyModalSelector);
+  const cookieButtonSelector = await page.waitForSelector(
+    CONFIG.cookiePolicyModalAcceptButtonSelector,
+  );
 
-  if (cookieModal) {
-    cookieModal.$eval(CONFIG.cookiePolicyModalAcceptButtonSelector, (el) => el.click());
-  }
+  await cookieButtonSelector?.evaluate((el) => el.click());
+}
+
+/**
+ * Pauses all browser execution for the time specified
+ * @param {object} page The browser page object
+ * @param {number} timeMs How many ms to pause for
+ */
+async function pauseBrowser(page, timeMs) {
+  await page.waitForTimeout(timeMs);
 }
