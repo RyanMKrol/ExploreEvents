@@ -1,0 +1,31 @@
+{
+  "name": "event-explorer",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "//": "experimental-specifier-resolution=node allows me to not have to specify .../index.js in my imports",
+  "scripts": {
+    "_exploreEvents": "node --experimental-specifier-resolution=node src/scripts/exploreEvents",
+    "lint": "eslint src",
+    "script:auditDuplicateFiles": "npm run lint && npm run _exploreEvents"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RyanMKrol/EventExplorer.git"
+  },
+  "author": "Ryan Krol",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/RyanMKrol/EventExplorer/issues"
+  },
+  "homepage": "https://github.com/RyanMKrol/EventExplorer#readme",
+  "devDependencies": {
+    "eslint": "^8.46.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.0",
+    "eslint-plugin-jsdoc": "^46.4.6"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0"
+  }
+}
