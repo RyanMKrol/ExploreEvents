@@ -40,7 +40,7 @@ const CONFIG_Omeara = {
 };
 
 const CONFIG_UnionChapel = {
-  venue: 'UnionChapel',
+  venue: 'Union Chapel',
   eventsUrl: 'https://unionchapel.org.uk/whats-on',
   eventCardSelector: '.card',
   eventCardArtistSelector: '.card-inner > p.card-title',
@@ -50,7 +50,18 @@ const CONFIG_UnionChapel = {
   cookiePolicyModalAcceptButtonSelector: '#cookiescript_accept',
 };
 
-const CONFIG = CONFIG_Roundhouse;
+const CONFIG_TheShacklewellArms = {
+  venue: 'The Shacklewell Arms',
+  eventsUrl: 'https://www.shacklewellarms.com/events',
+  eventCardSelector: '.dice_events article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.dice_load-more',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG = CONFIG_TheShacklewellArms;
 
 (async function main() {
   console.log('setting up page...');
@@ -71,8 +82,7 @@ const CONFIG = CONFIG_Roundhouse;
   console.log('finished aknowledging cookies');
 
   console.log('waiting for page to load...');
-  // Wait for something that signifies the page is loaded
-  await page.waitForSelector(CONFIG.eventCardSelector);
+  await page.waitForNetworkIdle();
   console.log('page has loaded');
 
   while (true) {
@@ -114,6 +124,9 @@ const CONFIG = CONFIG_Roundhouse;
     }
 
     await page.click(CONFIG.loadMoreButtonSelector);
+
+    // wait for the new events to load after loading more
+    await page.waitForNetworkIdle();
   }
   await browser.close();
 }());
