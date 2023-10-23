@@ -11,7 +11,7 @@ import puppeteer from 'puppeteer';
   console.log(3);
 
   // Navigate the page to a URL
-  await page.goto('https://www.academymusicgroup.com/o2shepherdsbushempire/events/all');
+  await page.goto('https://www.roundhouse.org.uk/whats-on/?type=event');
 
   console.log(4);
   // Set screen size
@@ -19,20 +19,20 @@ import puppeteer from 'puppeteer';
   console.log(5);
 
   // Wait and click on first result
-  const searchResultSelector = '.item-list';
+  const searchResultSelector = '.card-view';
   console.log(7);
   await page.waitForSelector(searchResultSelector);
 
-  const events = await page.$$('.event-item');
+  const events = await page.$$('.event-card');
 
-  const parsedEvents = await events.reduce((acc, val) => acc.then(async (newAcc) => {
-    const fullTitle = await val?.evaluate((el) => el.textContent);
-    console.log(fullTitle);
-    newAcc.push(fullTitle);
+  const eventItemDetails = await events.reduce((acc, event) => acc.then(async (newAcc) => {
+    const artist = await event.$eval('.event-card__title', (result) => result.textContent.trim());
+    const date = await event.$eval('.event-card__details', (result) => result.textContent.trim());
+    newAcc.push({ artist, date });
     return newAcc;
   }), Promise.resolve([]));
 
-  console.log(parsedEvents);
+  console.log(eventItemDetails);
 
   await browser.close();
 }());
