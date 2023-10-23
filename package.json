@@ -7,7 +7,7 @@
   "scripts": {
     "_exploreEvents": "node --experimental-specifier-resolution=node src/scripts/exploreEvents",
     "lint": "eslint src",
-    "script:auditDuplicateFiles": "npm run lint && npm run _exploreEvents"
+    "script:exploreEvents": "npm run lint && npm run _exploreEvents"
   },
   "repository": {
     "type": "git",
