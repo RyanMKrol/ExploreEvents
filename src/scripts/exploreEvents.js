@@ -61,7 +61,73 @@ const CONFIG_TheShacklewellArms = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
-const CONFIG = CONFIG_TheShacklewellArms;
+const CONFIG_HereAtOuternet = {
+  venue: 'HERE at Outernet',
+  eventsUrl: 'https://dice.fm/venue/here-at-outernet-wgbx',
+  eventCardSelector: '[class*=EventParts__EventBlock]',
+  eventCardArtistSelector: '[class*=EventParts__EventName]',
+  eventCardDateSelector: '[class*=EventParts__EventDate]',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '[class*=idOrSlug__MoreButton]',
+  cookiePolicyModalAcceptButtonSelector: '.ch2-dialog-actions .ch2-btn-primary',
+};
+
+const CONFIG_Troxy = {
+  venue: 'Troxy',
+  eventsUrl: 'https://troxy.co.uk/whats-on/',
+  eventCardSelector: '.events-col',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.date-and-title',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_BushHall = {
+  venue: 'Bush Hall',
+  eventsUrl: 'https://bushhallmusic.co.uk/pages/whats-on',
+  eventCardSelector: '.dice-widget article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_MothClub = {
+  venue: 'MOTH Club',
+  eventsUrl: 'https://mothclub.co.uk/events',
+  eventCardSelector: '.dice-widget article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.dice_load-more',
+  cookiePolicyModalAcceptButtonSelector: '.mc-closeModal',
+};
+
+const CONFIG_TheBlackHeart = {
+  venue: 'The Black Heart',
+  eventsUrl: 'https://www.ourblackheart.com/upcoming-events',
+  eventCardSelector: '.summary-item',
+  eventCardArtistSelector: '.summary-title',
+  eventCardDateSelector: '.summary-thumbnail-event-date-inner',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheWaitingRoom = {
+  venue: 'The Waiting Room',
+  eventsUrl: 'https://www.thewaitingroomn16.com/',
+  eventCardSelector: '.grid-item',
+  eventCardArtistSelector: '.event_title',
+  eventCardDateSelector: '.date_time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG = CONFIG_TheWaitingRoom;
 
 (async function main() {
   console.log('setting up page...');
@@ -91,21 +157,28 @@ const CONFIG = CONFIG_TheShacklewellArms;
     console.log('events have loaded');
 
     const eventItemDetails = await events.reduce((acc, event) => acc.then(async (newAcc) => {
-      const artist = await event.$eval(
-        CONFIG.eventCardArtistSelector,
-        (result) => result.textContent.trim(),
-      );
-      const date = await event.$eval(
-        CONFIG.eventCardDateSelector,
-        (result) => result.textContent.trim(),
-      );
+      try {
+        const artist = await event.$eval(
+          CONFIG.eventCardArtistSelector,
+          (result) => result.textContent.trim(),
+        );
+        const date = await event.$eval(
+          CONFIG.eventCardDateSelector,
+          (result) => result.textContent.trim(),
+        );
 
-      const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
-        CONFIG.eventCardDescriptionSelector,
-        (result) => result.textContent.trim(),
-      ) : 'DESCRIPTION_NOT_REQUIRED';
+        const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
+          CONFIG.eventCardDescriptionSelector,
+          (result) => result.textContent.trim(),
+        ) : 'DESCRIPTION_NOT_REQUIRED';
 
-      newAcc.push({ artist, date, description });
+        newAcc.push({ artist, date, description });
+      } catch (error) {
+        // TODO: Start tracking how many times we fail, and do
+        // something when that number is too high
+        // This page currently has this issue - https://www.thewaitingroomn16.com/
+        console.log('there was an error so we skipped this many items');
+      }
 
       return newAcc;
     }), Promise.resolve([]));
@@ -117,6 +190,8 @@ const CONFIG = CONFIG_TheShacklewellArms;
       break;
     }
 
+    // TODO: we should guarantee that the more events button is clicked at least
+    // once, otherwise the underlying DOM may have changed and we might miss events
     const doesTheButtonExist = await page.$(CONFIG.loadMoreButtonSelector);
     if (!doesTheButtonExist) {
       console.log('the button does not exist apparently');
