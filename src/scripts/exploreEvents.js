@@ -127,7 +127,18 @@ const CONFIG_TheWaitingRoom = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
-const CONFIG = CONFIG_TheWaitingRoom;
+const CONFIG_TheO2 = {
+  venue: 'The O2',
+  eventsUrl: 'https://www.theo2.co.uk/events/venue/the-o2-arena',
+  eventCardSelector: '.eventItem',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.date.divider-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '#loadMoreEvents',
+  cookiePolicyModalAcceptButtonSelector: '#onetrust-button-group #onetrust-accept-btn-handler',
+};
+
+const CONFIG = CONFIG_TheO2;
 
 (async function main() {
   console.log('setting up page...');
@@ -162,6 +173,7 @@ const CONFIG = CONFIG_TheWaitingRoom;
           CONFIG.eventCardArtistSelector,
           (result) => result.textContent.trim(),
         );
+
         const date = await event.$eval(
           CONFIG.eventCardDateSelector,
           (result) => result.textContent.trim(),
@@ -177,7 +189,7 @@ const CONFIG = CONFIG_TheWaitingRoom;
         // TODO: Start tracking how many times we fail, and do
         // something when that number is too high
         // This page currently has this issue - https://www.thewaitingroomn16.com/
-        console.log('there was an error so we skipped this many items');
+        console.log('there was an error so we skipped this many items', error);
       }
 
       return newAcc;
@@ -192,15 +204,23 @@ const CONFIG = CONFIG_TheWaitingRoom;
 
     // TODO: we should guarantee that the more events button is clicked at least
     // once, otherwise the underlying DOM may have changed and we might miss events
-    const doesTheButtonExist = await page.$(CONFIG.loadMoreButtonSelector);
-    if (!doesTheButtonExist) {
+    const selectedButton = await page.$(CONFIG.loadMoreButtonSelector);
+    if (!selectedButton) {
       console.log('the button does not exist apparently');
+      await pauseBrowser(page, 10000000);
       break;
     }
 
-    await page.click(CONFIG.loadMoreButtonSelector);
+    try {
+      await page.click(CONFIG.loadMoreButtonSelector);
+    } catch (err) {
+      // TODO: handle this better by checking the visibility of the button
+      console.log("the load more button likely wasn't visible, so this failed");
+      break;
+    }
 
     // wait for the new events to load after loading more
+    console.log('waiting for the page to load everything new');
     await page.waitForNetworkIdle();
   }
   await browser.close();
