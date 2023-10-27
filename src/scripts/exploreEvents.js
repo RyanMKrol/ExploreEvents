@@ -251,6 +251,8 @@ const CONFIG = CONFIG_EventimApollo;
   // Launch the browser and open a new blank page
   const { browser, page } = await createBrowserAndPage();
 
+  const resultsSet = new Set();
+
   // some sites store their events across different distinct pages, so we process them individually
   for (let i = 0; i < CONFIG.eventUrls.length; i += 1) {
     // Navigate the page to a URL
@@ -277,7 +279,7 @@ const CONFIG = CONFIG_EventimApollo;
       const events = await page.$$(CONFIG.eventCardSelector);
       console.log('events have loaded');
 
-      const eventItemDetails = await events.reduce((acc, event) => acc.then(async (newAcc) => {
+      await events.reduce((acc, event) => acc.then(async () => {
         try {
           const artist = await event.$eval(
             CONFIG.eventCardArtistSelector,
@@ -293,20 +295,16 @@ const CONFIG = CONFIG_EventimApollo;
           const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
             CONFIG.eventCardDescriptionSelector,
             (result) => result.textContent.trim(),
-          ) : 'DESCRIPTION_NOT_REQUIRED';
+          ) : undefined;
 
-          newAcc.push({ artist, date, description });
+          resultsSet.add(JSON.stringify({ artist, date, description }));
         } catch (error) {
         // TODO: Start tracking how many times we fail, and do
         // something when that number is too high
         // This page currently has this issue - https://www.thewaitingroomn16.com/
           console.log('there was an error so we skipped this many items', error);
         }
-
-        return newAcc;
       }), Promise.resolve([]));
-
-      console.log(eventItemDetails, eventItemDetails.length);
 
       // if there's nothing more to load, we're done
       if (!CONFIG.loadMoreButtonSelector) {
@@ -337,6 +335,7 @@ const CONFIG = CONFIG_EventimApollo;
       console.log('waiting for the page to load everything new');
       await page.waitForNetworkIdle();
     }
+    console.log(resultsSet, resultsSet.size);
   }
 
   await browser.close();
