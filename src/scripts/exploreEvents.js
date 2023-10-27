@@ -6,6 +6,10 @@
 
 import puppeteer from 'puppeteer';
 
+const PAGE_LOAD_HELPER_TYPES = {
+  SCROLL_TILL_DONE: 1,
+};
+
 const CONFIG_Roundhouse = {
   venue: 'Roundhouse',
   eventsUrl: 'https://www.roundhouse.org.uk/whats-on/?type=event',
@@ -138,7 +142,29 @@ const CONFIG_TheO2 = {
   cookiePolicyModalAcceptButtonSelector: '#onetrust-button-group #onetrust-accept-btn-handler',
 };
 
-const CONFIG = CONFIG_TheO2;
+const CONFIG_barbican = {
+  venue: 'barbican',
+  eventsUrl: 'https://www.barbican.org.uk/whats-on/contemporary-music',
+  eventCardSelector: 'article.listing--event',
+  eventCardArtistSelector: '.listing-title--event',
+  eventCardDateSelector: '.listing-date',
+  eventCardDescriptionSelector: '.search-listing__intro div:nth-child(2)',
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.cookie-notice .cm-btn-success',
+};
+
+const CONFIG_TheGarage = {
+  venue: 'The Garage',
+  eventsUrl: 'https://www.thegarage.london/live/',
+  eventCardSelector: '.card--full',
+  eventCardArtistSelector: '.card__heading',
+  eventCardDateSelector: 'h6',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.button__close',
+};
+
+const CONFIG = CONFIG_TheGarage;
 
 (async function main() {
   console.log('setting up page...');
@@ -146,11 +172,11 @@ const CONFIG = CONFIG_TheO2;
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
 
-  // Navigate the page to a URL
-  await page.goto(CONFIG.eventsUrl);
-
   // Set screen size
   await page.setViewport({ width: 1080, height: 1024 });
+
+  // Navigate the page to a URL
+  await page.goto(CONFIG.eventsUrl);
 
   console.log('finished setting up page');
 
@@ -162,7 +188,15 @@ const CONFIG = CONFIG_TheO2;
   await page.waitForNetworkIdle();
   console.log('page has loaded');
 
+  console.log('maybe execute page load helpers...');
+  await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
+  console.log('page load helpers done');
+
   while (true) {
+    console.log('Scrolling to the bottom of this page...');
+    await scrollToBottomUntilNoMoreChanges(page);
+    console.log('Finished scrolling to the bottom of the page');
+
     console.log('waiting to fetch events from page...');
     const events = await page.$$(CONFIG.eventCardSelector);
     console.log('events have loaded');
@@ -204,10 +238,9 @@ const CONFIG = CONFIG_TheO2;
 
     // TODO: we should guarantee that the more events button is clicked at least
     // once, otherwise the underlying DOM may have changed and we might miss events
-    const selectedButton = await page.$(CONFIG.loadMoreButtonSelector);
-    if (!selectedButton) {
+    const loadMoreButton = await page.$(CONFIG.loadMoreButtonSelector);
+    if (!loadMoreButton) {
       console.log('the button does not exist apparently');
-      await pauseBrowser(page, 10000000);
       break;
     }
 
@@ -249,4 +282,74 @@ async function maybeAcknowledgeCookieModal(page) {
  */
 async function pauseBrowser(page, timeMs) {
   await page.waitForTimeout(timeMs);
+}
+
+/**
+ * Executes a page loading helper strategy if needed
+ * @param {object} page The browser page object
+ * @param {object} helperConfig config representing which helpers are needed to load the page
+ */
+async function maybeExecutePageLoadHelpers(page, helperConfig) {
+  if (!helperConfig || !helperConfig.type) {
+    return;
+  }
+
+  switch (helperConfig.type) {
+    default:
+      console.log('Doing nothing extra to load the page');
+      break;
+  }
+}
+
+/**
+ * Keeps scrolling to the bottom of the page until we're unable to scroll anymore
+ * @param {object} page The browser page object
+ */
+async function scrollToBottomUntilNoMoreChanges(page) {
+  const MAX_RETRIES = 3;
+  const TIME_BETWEEN_RETRIES_MS = 1000;
+
+  let previousHeight;
+  let retries = 0;
+
+  while (true) {
+    const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+
+    if (previousHeight !== currentHeight) {
+      previousHeight = currentHeight;
+      await autoScroll(page);
+      retries = 0;
+    } else {
+      if (retries >= MAX_RETRIES) { // wait for 3 cycles to ensure no more changes
+        break;
+      }
+      await page.waitForTimeout(TIME_BETWEEN_RETRIES_MS);
+      retries += 1;
+    }
+  }
+}
+
+/**
+ *
+ * @param {object} page The browser page object
+ */
+async function autoScroll(page) {
+  await page.evaluate(async () => {
+    await new Promise((resolve, reject) => {
+      const TIME_BETWEEN_TICKS = 50;
+      const SCROLL_DISTANCE_PER_TICK = 100;
+
+      let totalHeight = 0;
+      const timer = setInterval(() => {
+        const { scrollHeight } = document.body;
+        window.scrollBy(0, SCROLL_DISTANCE_PER_TICK);
+        totalHeight += SCROLL_DISTANCE_PER_TICK;
+
+        if (totalHeight >= scrollHeight) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, TIME_BETWEEN_TICKS);
+    });
+  });
 }
