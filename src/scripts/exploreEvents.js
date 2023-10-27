@@ -14,7 +14,7 @@ const TIMEOUTS = {
 const PAGE_LOAD_HELPER_TYPES = {
   SCROLL_TILL_DONE: 1,
   REMOVE_ELEMENT: 2,
-  DISMISS_ELEMENT: 3,
+  CLICK_ELEMENT: 3,
 };
 
 const CONFIG_Roundhouse = {
@@ -319,14 +319,69 @@ const CONFIG_SouthBankCentre = {
   loadMoreButtonSelector: undefined,
   cookiePolicyModalAcceptButtonSelector: '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
   pageLoadHelper: {
-    type: PAGE_LOAD_HELPER_TYPES.DISMISS_ELEMENT,
+    type: PAGE_LOAD_HELPER_TYPES.CLICK_ELEMENT,
     options: {
       selector: '.newsletter-modal__close',
     },
   },
 };
 
-const CONFIG = CONFIG_SouthBankCentre;
+const CONFIG_Dingwalls = {
+  venue: 'Dingwalls',
+  eventUrls: ['https://powerhauscamden.com/whats-on/'],
+  eventCardSelector: 'section.page__content > div',
+  eventCardArtistSelector: '.feed__title',
+  eventCardDateSelector: 'p',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '#ccc-notify-accept',
+};
+
+const CONFIG_TheUnderworld = {
+  venue: 'The Underworld',
+  eventUrls: ['https://www.theunderworldcamden.co.uk/'],
+  eventCardSelector: '#gigs article',
+  eventCardArtistSelector: '.list-header-title',
+  eventCardDateSelector: '.list-header-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheCamdenAssembly = {
+  venue: 'The Camden Assembly',
+  eventUrls: ['https://www.camdenassembly.com/live-shows/'],
+  eventCardSelector: '.upcommingevents .elementor-posts article',
+  eventCardArtistSelector: '.elementor-post__title',
+  eventCardDateSelector: '.elementor-post__excerpt',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_OSLO = {
+  venue: 'OSLO',
+  eventUrls: ['https://www.oslohackney.com/events/'],
+  eventCardSelector: '.card--full',
+  eventCardArtistSelector: '.card__heading',
+  eventCardDateSelector: 'h6',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_Colours = {
+  venue: 'Colours',
+  eventUrls: ['https://colourshoxton.com/live-club/'],
+  eventCardSelector: 'div.tw-section',
+  eventCardArtistSelector: '.tw-name',
+  eventCardDateSelector: '.tw-date-time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: 'span.next a',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG = CONFIG_Colours;
 
 // need a system to grab details from the event page
 // https:// www.academymusicgroup.com/o2shepherdsbushempire/events/all
@@ -412,6 +467,10 @@ const CONFIG = CONFIG_SouthBankCentre;
       console.log('trying to click the load more button');
       try {
         await page.click(CONFIG.loadMoreButtonSelector);
+
+        // have to wait for the network to idle before scrolling because the "load more" button
+        // can occasionally load a new page entirely, which will cause any scrolling to crash
+        await page.waitForNetworkIdle();
       } catch (err) {
       // TODO: handle this better by checking the visibility of the button
         console.log("the load more button likely wasn't visible, so this failed");
@@ -490,8 +549,8 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
     case PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT:
       await removeElement(page, helperConfig.options.selector);
       break;
-    case PAGE_LOAD_HELPER_TYPES.DISMISS_ELEMENT:
-      await dismissElement(page, helperConfig.options.selector);
+    case PAGE_LOAD_HELPER_TYPES.CLICK_ELEMENT:
+      await clickElement(page, helperConfig.options.selector);
       break;
     default:
       console.log('Doing nothing extra to load the page');
@@ -504,7 +563,7 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
  * @param {object} page The browser page object
  * @param {string} selector String to access the item you want to dismiss
  */
-async function dismissElement(page, selector) {
+async function clickElement(page, selector) {
   const element = await page.waitForSelectorOptional(
     selector,
     TIMEOUTS.PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS,
