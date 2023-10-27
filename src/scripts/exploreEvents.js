@@ -8,11 +8,13 @@ import puppeteer from 'puppeteer';
 
 const TIMEOUTS = {
   COOKIE_BUTTON_TIMEOUT_WAIT_MS: 3000,
+  PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS: 5000,
 };
 
 const PAGE_LOAD_HELPER_TYPES = {
   SCROLL_TILL_DONE: 1,
   REMOVE_ELEMENT: 2,
+  DISMISS_ELEMENT: 3,
 };
 
 const CONFIG_Roundhouse = {
@@ -241,11 +243,97 @@ const CONFIG_EventimApollo = {
   cookiePolicyModalAcceptButtonSelector: '#onetrust-accept-btn-handler',
 };
 
-const CONFIG = CONFIG_EventimApollo;
+const CONFIG_AlexandraPalace = {
+  venue: 'Alexandra Palace',
+  eventUrls: ['https://www.alexandrapalace.com/whats-on/'],
+  eventCardSelector: '[class*=whats-on-item]:not(.past-event)',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.dates',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheLowerThird = {
+  venue: 'The Lower Third',
+  eventUrls: ['https://dice.fm/venue/the-lower-third-pply'],
+  eventCardSelector: '[class*=EventParts__EventBlock]',
+  eventCardArtistSelector: '[class*=EventParts__EventName]',
+  eventCardDateSelector: '[class*=EventParts__EventDate]',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '[class*=idOrSlug__MoreButton]',
+  cookiePolicyModalAcceptButtonSelector: '.ch2-dialog-actions .ch2-btn-primary',
+};
+
+const CONFIG_IslingtonAssemblyHall = {
+  venue: 'Islington Assembly Hall',
+  eventUrls: ['https://islingtonassemblyhall.co.uk/events/'],
+  eventCardSelector: '.event__item',
+  eventCardArtistSelector: '.event__item__title',
+  eventCardDateSelector: '.event__item__date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheDome = {
+  venue: 'The Dome',
+  eventUrls: ['https://domelondon.co.uk/all-events'],
+  eventCardSelector: 'article[class*=eventlist-event]:not(.eventlist-event--past)',
+  eventCardArtistSelector: 'h1.eventlist-title',
+  eventCardDateSelector: 'time.event-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.sqs-cookie-banner-v2-accept',
+};
+
+const CONFIG_Wembley = {
+  venue: 'Wembley Stadium',
+  eventUrls: ['https://www.wembleystadium.com/events'],
+  eventCardSelector: '.fa-filter-content__item',
+  eventCardArtistSelector: 'h2',
+  eventCardDateSelector: '.fa-content-promo__content span.small-text',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '#onetrust-accept-btn-handler',
+};
+
+const CONFIG_OvoArena = {
+  venue: 'Ovo Arena',
+  eventUrls: ['https://www.ovoarena.co.uk/events'],
+  eventCardSelector: '.eventItemWrapperEvent',
+  eventCardArtistSelector: '.title',
+  eventCardDateSelector: '.date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '#loadMoreEvents',
+  cookiePolicyModalAcceptButtonSelector: '.cc-compliance .cc-allow',
+};
+
+const CONFIG_SouthBankCentre = {
+  venue: 'South Bank Centre',
+  eventUrls: ['https://www.southbankcentre.co.uk/whats-on?type=gigs'],
+  eventCardSelector: '.arrangement-card__container',
+  eventCardArtistSelector: '.arrangement-card__title',
+  eventCardDateSelector: '.arrangement-card__date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+  pageLoadHelper: {
+    type: PAGE_LOAD_HELPER_TYPES.DISMISS_ELEMENT,
+    options: {
+      selector: '.newsletter-modal__close',
+    },
+  },
+};
+
+const CONFIG = CONFIG_SouthBankCentre;
 
 // need a system to grab details from the event page
 // https:// www.academymusicgroup.com/o2shepherdsbushempire/events/all
 // https://www.academymusicgroup.com/o2forumkentishtown/events/all
+
+// need a system to get around captcha:
+// https://www.royalalberthall.com/tickets/
 
 (async function main() {
   // Launch the browser and open a new blank page
@@ -260,7 +348,6 @@ const CONFIG = CONFIG_EventimApollo;
 
     console.log('setting up page... ');
     await setupPage(page);
-    console.log('finished setting up page');
 
     console.log('Scrolling to the bottom of this page...');
     await scrollToBottomUntilNoMoreChanges(page);
@@ -306,11 +393,14 @@ const CONFIG = CONFIG_EventimApollo;
         }
       }), Promise.resolve([]));
 
+      console.log('added a round of things');
       // if there's nothing more to load, we're done
       if (!CONFIG.loadMoreButtonSelector) {
+        console.log('no selector in config skipping');
         break;
       }
 
+      console.log('grabbing a button to load more');
       // TODO: we should guarantee that the more events button is clicked at least
       // once, otherwise the underlying DOM may have changed and we might miss events
       const loadMoreButton = await page.$(CONFIG.loadMoreButtonSelector);
@@ -319,6 +409,7 @@ const CONFIG = CONFIG_EventimApollo;
         break;
       }
 
+      console.log('trying to click the load more button');
       try {
         await page.click(CONFIG.loadMoreButtonSelector);
       } catch (err) {
@@ -399,10 +490,27 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
     case PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT:
       await removeElement(page, helperConfig.options.selector);
       break;
+    case PAGE_LOAD_HELPER_TYPES.DISMISS_ELEMENT:
+      await dismissElement(page, helperConfig.options.selector);
+      break;
     default:
       console.log('Doing nothing extra to load the page');
       break;
   }
+}
+
+/**
+ * Dismisses an element from the page using a selector
+ * @param {object} page The browser page object
+ * @param {string} selector String to access the item you want to dismiss
+ */
+async function dismissElement(page, selector) {
+  const element = await page.waitForSelectorOptional(
+    selector,
+    TIMEOUTS.PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS,
+  );
+
+  await element?.evaluate((el) => el.click());
 }
 
 /**
