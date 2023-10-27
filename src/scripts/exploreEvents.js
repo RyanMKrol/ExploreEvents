@@ -6,24 +6,35 @@
 
 import puppeteer from 'puppeteer';
 
+const TIMEOUTS = {
+  COOKIE_BUTTON_TIMEOUT_WAIT_MS: 3000,
+};
+
 const PAGE_LOAD_HELPER_TYPES = {
   SCROLL_TILL_DONE: 1,
+  REMOVE_ELEMENT: 2,
 };
 
 const CONFIG_Roundhouse = {
   venue: 'Roundhouse',
-  eventsUrl: 'https://www.roundhouse.org.uk/whats-on/?type=event',
+  eventUrls: ['https://www.roundhouse.org.uk/whats-on/?type=event'],
   eventCardSelector: '.event-card',
   eventCardArtistSelector: '.event-card__title',
   eventCardDateSelector: '.event-card__details',
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: '.button--loadmore',
   cookiePolicyModalAcceptButtonSelector: '.cookie-policy__popup .button--primary',
+  pageLoadHelper: {
+    type: PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT,
+    options: {
+      selector: '.filters-bar',
+    },
+  },
 };
 
 const CONFIG_EartH = {
   venue: 'EartH',
-  eventsUrl: 'https://earthackney.co.uk/events/',
+  eventUrls: ['https://earthackney.co.uk/events/'],
   eventCardSelector: '.list--events__item',
   eventCardArtistSelector: '.list--events__item__title',
   eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
@@ -32,9 +43,31 @@ const CONFIG_EartH = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
+const CONFIG_VillageUnderground = {
+  venue: 'Village Underground',
+  eventUrls: ['https://villageunderground.co.uk/events/'],
+  eventCardSelector: '.list--events__item',
+  eventCardArtistSelector: '.list--events__item__title',
+  eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
+  eventCardDescriptionSelector: '.list--events__item__description',
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheO2 = {
+  venue: 'The O2',
+  eventUrls: ['https://www.theo2.co.uk/events/venue/the-o2-arena'],
+  eventCardSelector: '.eventItem',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.date.divider-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '#loadMoreEvents',
+  cookiePolicyModalAcceptButtonSelector: '#onetrust-button-group #onetrust-accept-btn-handler',
+};
+
 const CONFIG_Omeara = {
   venue: 'Omeara',
-  eventsUrl: 'https://omearalondon.com/events/?event-type=live&currentpage=1',
+  eventUrls: ['https://omearalondon.com/events/?event-type=live&currentpage=1'],
   eventCardSelector: '.events-grid-view__event-card',
   eventCardArtistSelector: '.event-title',
   eventCardDateSelector: '.event-date',
@@ -45,7 +78,7 @@ const CONFIG_Omeara = {
 
 const CONFIG_UnionChapel = {
   venue: 'Union Chapel',
-  eventsUrl: 'https://unionchapel.org.uk/whats-on',
+  eventUrls: ['https://unionchapel.org.uk/whats-on'],
   eventCardSelector: '.card',
   eventCardArtistSelector: '.card-inner > p.card-title',
   eventCardDateSelector: '.card-inner > p > strong',
@@ -56,7 +89,7 @@ const CONFIG_UnionChapel = {
 
 const CONFIG_TheShacklewellArms = {
   venue: 'The Shacklewell Arms',
-  eventsUrl: 'https://www.shacklewellarms.com/events',
+  eventUrls: ['https://www.shacklewellarms.com/events'],
   eventCardSelector: '.dice_events article',
   eventCardArtistSelector: '.dice_event-title',
   eventCardDateSelector: 'time',
@@ -67,7 +100,7 @@ const CONFIG_TheShacklewellArms = {
 
 const CONFIG_HereAtOuternet = {
   venue: 'HERE at Outernet',
-  eventsUrl: 'https://dice.fm/venue/here-at-outernet-wgbx',
+  eventUrls: ['https://dice.fm/venue/here-at-outernet-wgbx'],
   eventCardSelector: '[class*=EventParts__EventBlock]',
   eventCardArtistSelector: '[class*=EventParts__EventName]',
   eventCardDateSelector: '[class*=EventParts__EventDate]',
@@ -78,7 +111,7 @@ const CONFIG_HereAtOuternet = {
 
 const CONFIG_Troxy = {
   venue: 'Troxy',
-  eventsUrl: 'https://troxy.co.uk/whats-on/',
+  eventUrls: ['https://troxy.co.uk/whats-on/'],
   eventCardSelector: '.events-col',
   eventCardArtistSelector: 'h3',
   eventCardDateSelector: '.date-and-title',
@@ -89,7 +122,7 @@ const CONFIG_Troxy = {
 
 const CONFIG_BushHall = {
   venue: 'Bush Hall',
-  eventsUrl: 'https://bushhallmusic.co.uk/pages/whats-on',
+  eventUrls: ['https://bushhallmusic.co.uk/pages/whats-on'],
   eventCardSelector: '.dice-widget article',
   eventCardArtistSelector: '.dice_event-title',
   eventCardDateSelector: 'time',
@@ -100,7 +133,7 @@ const CONFIG_BushHall = {
 
 const CONFIG_MothClub = {
   venue: 'MOTH Club',
-  eventsUrl: 'https://mothclub.co.uk/events',
+  eventUrls: ['https://mothclub.co.uk/events'],
   eventCardSelector: '.dice-widget article',
   eventCardArtistSelector: '.dice_event-title',
   eventCardDateSelector: 'time',
@@ -111,7 +144,7 @@ const CONFIG_MothClub = {
 
 const CONFIG_TheBlackHeart = {
   venue: 'The Black Heart',
-  eventsUrl: 'https://www.ourblackheart.com/upcoming-events',
+  eventUrls: ['https://www.ourblackheart.com/upcoming-events'],
   eventCardSelector: '.summary-item',
   eventCardArtistSelector: '.summary-title',
   eventCardDateSelector: '.summary-thumbnail-event-date-inner',
@@ -122,7 +155,7 @@ const CONFIG_TheBlackHeart = {
 
 const CONFIG_TheWaitingRoom = {
   venue: 'The Waiting Room',
-  eventsUrl: 'https://www.thewaitingroomn16.com/',
+  eventUrls: ['https://www.thewaitingroomn16.com/'],
   eventCardSelector: '.grid-item',
   eventCardArtistSelector: '.event_title',
   eventCardDateSelector: '.date_time',
@@ -131,20 +164,9 @@ const CONFIG_TheWaitingRoom = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
-const CONFIG_TheO2 = {
-  venue: 'The O2',
-  eventsUrl: 'https://www.theo2.co.uk/events/venue/the-o2-arena',
-  eventCardSelector: '.eventItem',
-  eventCardArtistSelector: 'h3',
-  eventCardDateSelector: '.date.divider-date',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: '#loadMoreEvents',
-  cookiePolicyModalAcceptButtonSelector: '#onetrust-button-group #onetrust-accept-btn-handler',
-};
-
 const CONFIG_barbican = {
   venue: 'barbican',
-  eventsUrl: 'https://www.barbican.org.uk/whats-on/contemporary-music',
+  eventUrls: ['https://www.barbican.org.uk/whats-on/contemporary-music'],
   eventCardSelector: 'article.listing--event',
   eventCardArtistSelector: '.listing-title--event',
   eventCardDateSelector: '.listing-date',
@@ -155,7 +177,7 @@ const CONFIG_barbican = {
 
 const CONFIG_TheGarage = {
   venue: 'The Garage',
-  eventsUrl: 'https://www.thegarage.london/live/',
+  eventUrls: ['https://www.thegarage.london/live/'],
   eventCardSelector: '.card--full',
   eventCardArtistSelector: '.card__heading',
   eventCardDateSelector: 'h6',
@@ -164,100 +186,178 @@ const CONFIG_TheGarage = {
   cookiePolicyModalAcceptButtonSelector: '.button__close',
 };
 
-const CONFIG = CONFIG_TheGarage;
+const CONFIG_Scala = {
+  venue: 'Scala',
+  eventUrls: ['https://scala.co.uk/events/categories/live-music/'],
+  eventCardSelector: '.tb-event-item',
+  eventCardArtistSelector: 'h2',
+  eventCardDateSelector: '.date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_Koko = {
+  venue: 'KOKO',
+  eventUrls: ['https://www.koko.co.uk/whats-on'],
+  eventCardSelector: '[class*=Event_component]',
+  eventCardArtistSelector: '[class*=Event_title]',
+  eventCardDateSelector: '[class*=Event_date]',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_ElectricBallroom = {
+  venue: 'Electric Ballroom',
+  eventUrls: ['https://electricballroom.co.uk/whats-on/'],
+  eventCardSelector: '.card',
+  eventCardArtistSelector: 'h2',
+  eventCardDateSelector: '.event-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_EventimApollo = {
+  venue: 'Eventim Apollo',
+  eventUrls: ['https://www.eventimapollo.com/events',
+    'https://www.eventimapollo.com/events/m/1/#month-filters',
+    'https://www.eventimapollo.com/events/m/2/#month-filters',
+    'https://www.eventimapollo.com/events/m/3/#month-filters',
+    'https://www.eventimapollo.com/events/m/4/#month-filters',
+    'https://www.eventimapollo.com/events/m/5/#month-filters',
+    'https://www.eventimapollo.com/events/m/6/#month-filters',
+    'https://www.eventimapollo.com/events/m/7/#month-filters',
+    'https://www.eventimapollo.com/events/m/8/#month-filters',
+    'https://www.eventimapollo.com/events/m/9/#month-filters',
+    'https://www.eventimapollo.com/events/m/10/#month-filters',
+  ],
+  eventCardSelector: '.card',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.event-index__load-more',
+  cookiePolicyModalAcceptButtonSelector: '#onetrust-accept-btn-handler',
+};
+
+const CONFIG = CONFIG_EventimApollo;
+
+// need a system to grab details from the event page
+// https:// www.academymusicgroup.com/o2shepherdsbushempire/events/all
+// https://www.academymusicgroup.com/o2forumkentishtown/events/all
 
 (async function main() {
-  console.log('setting up page...');
   // Launch the browser and open a new blank page
-  const browser = await puppeteer.launch({ headless: false });
-  const page = await browser.newPage();
+  const { browser, page } = await createBrowserAndPage();
 
-  // Set screen size
-  await page.setViewport({ width: 1080, height: 1024 });
+  // some sites store their events across different distinct pages, so we process them individually
+  for (let i = 0; i < CONFIG.eventUrls.length; i += 1) {
+    // Navigate the page to a URL
+    await page.goto(CONFIG.eventUrls[i]);
 
-  // Navigate the page to a URL
-  await page.goto(CONFIG.eventsUrl);
+    console.log('setting up page... ');
+    await setupPage(page);
+    console.log('finished setting up page');
 
-  console.log('finished setting up page');
-
-  console.log('maybe aknowledging cookies...');
-  await maybeAcknowledgeCookieModal(page);
-  console.log('finished aknowledging cookies');
-
-  console.log('waiting for page to load...');
-  await page.waitForNetworkIdle();
-  console.log('page has loaded');
-
-  console.log('maybe execute page load helpers...');
-  await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
-  console.log('page load helpers done');
-
-  while (true) {
     console.log('Scrolling to the bottom of this page...');
     await scrollToBottomUntilNoMoreChanges(page);
     console.log('Finished scrolling to the bottom of the page');
 
-    console.log('waiting to fetch events from page...');
-    const events = await page.$$(CONFIG.eventCardSelector);
-    console.log('events have loaded');
+    console.log('waiting for page to load...');
+    await page.waitForNetworkIdle();
+    console.log('page has loaded');
 
-    const eventItemDetails = await events.reduce((acc, event) => acc.then(async (newAcc) => {
-      try {
-        const artist = await event.$eval(
-          CONFIG.eventCardArtistSelector,
-          (result) => result.textContent.trim(),
-        );
+    console.log('maybe execute page load helpers...');
+    await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
+    console.log('page load helpers done');
 
-        const date = await event.$eval(
-          CONFIG.eventCardDateSelector,
-          (result) => result.textContent.trim(),
-        );
+    while (true) {
+      console.log('waiting to fetch events from page...');
+      const events = await page.$$(CONFIG.eventCardSelector);
+      console.log('events have loaded');
 
-        const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
-          CONFIG.eventCardDescriptionSelector,
-          (result) => result.textContent.trim(),
-        ) : 'DESCRIPTION_NOT_REQUIRED';
+      const eventItemDetails = await events.reduce((acc, event) => acc.then(async (newAcc) => {
+        try {
+          const artist = await event.$eval(
+            CONFIG.eventCardArtistSelector,
+            (result) => result.textContent.trim(),
+          );
+          console.log(artist);
 
-        newAcc.push({ artist, date, description });
-      } catch (error) {
+          const date = await event.$eval(
+            CONFIG.eventCardDateSelector,
+            (result) => result.textContent.trim(),
+          );
+
+          const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
+            CONFIG.eventCardDescriptionSelector,
+            (result) => result.textContent.trim(),
+          ) : 'DESCRIPTION_NOT_REQUIRED';
+
+          newAcc.push({ artist, date, description });
+        } catch (error) {
         // TODO: Start tracking how many times we fail, and do
         // something when that number is too high
         // This page currently has this issue - https://www.thewaitingroomn16.com/
-        console.log('there was an error so we skipped this many items', error);
+          console.log('there was an error so we skipped this many items', error);
+        }
+
+        return newAcc;
+      }), Promise.resolve([]));
+
+      console.log(eventItemDetails, eventItemDetails.length);
+
+      // if there's nothing more to load, we're done
+      if (!CONFIG.loadMoreButtonSelector) {
+        break;
       }
 
-      return newAcc;
-    }), Promise.resolve([]));
+      // TODO: we should guarantee that the more events button is clicked at least
+      // once, otherwise the underlying DOM may have changed and we might miss events
+      const loadMoreButton = await page.$(CONFIG.loadMoreButtonSelector);
+      if (!loadMoreButton) {
+        console.log('the button does not exist apparently');
+        break;
+      }
 
-    console.log(eventItemDetails, eventItemDetails.length);
-
-    // if there's nothing more to load, we're done
-    if (!CONFIG.loadMoreButtonSelector) {
-      break;
-    }
-
-    // TODO: we should guarantee that the more events button is clicked at least
-    // once, otherwise the underlying DOM may have changed and we might miss events
-    const loadMoreButton = await page.$(CONFIG.loadMoreButtonSelector);
-    if (!loadMoreButton) {
-      console.log('the button does not exist apparently');
-      break;
-    }
-
-    try {
-      await page.click(CONFIG.loadMoreButtonSelector);
-    } catch (err) {
+      try {
+        await page.click(CONFIG.loadMoreButtonSelector);
+      } catch (err) {
       // TODO: handle this better by checking the visibility of the button
-      console.log("the load more button likely wasn't visible, so this failed");
-      break;
-    }
+        console.log("the load more button likely wasn't visible, so this failed");
+        break;
+      }
 
-    // wait for the new events to load after loading more
-    console.log('waiting for the page to load everything new');
-    await page.waitForNetworkIdle();
+      console.log('Scrolling to the bottom of this page...');
+      await scrollToBottomUntilNoMoreChanges(page);
+      console.log('Finished scrolling to the bottom of the page');
+
+      // wait for the new events to load after loading more
+      console.log('waiting for the page to load everything new');
+      await page.waitForNetworkIdle();
+    }
   }
+
   await browser.close();
 }());
+
+/**
+ * Sets up the page to be ready for scraping
+ * @param {object} page The browser page object
+ */
+async function setupPage(page) {
+  console.log('maybe aknowledging cookies...');
+  await maybeAcknowledgeCookieModal(page);
+
+  // disables smooth scrolling which can intefere with the programatic scrolling this script does
+  console.log('disabling smooth scrolling...');
+  await page.evaluate(() => {
+    const style = document.createElement('style');
+    style.textContent = 'html, body { scroll-behavior: auto !important; }';
+    document.head.appendChild(style);
+  });
+}
 
 /**
  * Acknowledges a cookie modal if one is present
@@ -268,11 +368,13 @@ async function maybeAcknowledgeCookieModal(page) {
     return;
   }
 
-  const cookieButtonSelector = await page.waitForSelector(
+  const cookieButton = await page.waitForSelectorOptional(
     CONFIG.cookiePolicyModalAcceptButtonSelector,
+    TIMEOUTS.COOKIE_BUTTON_TIMEOUT_WAIT_MS,
   );
 
-  await cookieButtonSelector?.evaluate((el) => el.click());
+  console.log('maybe doing something with the cookie button');
+  await cookieButton?.evaluate((el) => el.click());
 }
 
 /**
@@ -295,10 +397,27 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
   }
 
   switch (helperConfig.type) {
+    case PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT:
+      await removeElement(page, helperConfig.options.selector);
+      break;
     default:
       console.log('Doing nothing extra to load the page');
       break;
   }
+}
+
+/**
+ * Removes an element from the page using a selector
+ * @param {object} page The browser page object
+ * @param {string} selector String to access the item you want to remove
+ */
+async function removeElement(page, selector) {
+  await page.evaluate((x) => {
+    const element = document.querySelector(x);
+    if (element) {
+      element.parentNode.removeChild(element);
+    }
+  }, selector);
 }
 
 /**
@@ -330,19 +449,19 @@ async function scrollToBottomUntilNoMoreChanges(page) {
 }
 
 /**
- *
+ * Responsible for scrolling as far as the page will allow
  * @param {object} page The browser page object
  */
 async function autoScroll(page) {
   await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
       const TIME_BETWEEN_TICKS = 50;
-      const SCROLL_DISTANCE_PER_TICK = 100;
+      const SCROLL_DISTANCE_PER_TICK = 2000;
 
       let totalHeight = 0;
       const timer = setInterval(() => {
         const { scrollHeight } = document.body;
-        window.scrollBy(0, SCROLL_DISTANCE_PER_TICK);
+        window.scrollBy(0, SCROLL_DISTANCE_PER_TICK, { behavior: 'instant' });
         totalHeight += SCROLL_DISTANCE_PER_TICK;
 
         if (totalHeight >= scrollHeight) {
@@ -352,4 +471,28 @@ async function autoScroll(page) {
       }, TIME_BETWEEN_TICKS);
     });
   });
+}
+
+/**
+ * Sets up a browser and page object
+ * @returns {object} An object containing a browser and page
+ */
+async function createBrowserAndPage() {
+  const browser = await puppeteer.launch({ headless: false });
+  const page = await browser.newPage();
+
+  // Set screen size
+  await page.setViewport({ width: 1080, height: 1024 });
+
+  // create a method to wait for optional elements
+  page.waitForSelectorOptional = async function waitForSelectorOptional(selector, timeout) {
+    const element = await Promise.race([
+      this.waitForSelector(selector, { timeout: 0 }),
+      new Promise((resolve) => { setTimeout(() => resolve(), timeout); }),
+    ]);
+
+    return element;
+  };
+
+  return { browser, page };
 }
