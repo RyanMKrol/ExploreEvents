@@ -461,6 +461,39 @@ const CONFIG = [{
     type: PAGE_LOAD_HELPER_TYPES.MANUAL_INTERACTION,
   },
 },
+{
+  venue: "O2 Empire Shepherd's Bush",
+  eventUrls: ['https://www.academymusicgroup.com/o2shepherdsbushempire/events/all'],
+  eventCardSelector: 'div.item-list li',
+  alternateProcessingConfig: {
+    newTabLinkSelector: '.event-actions a',
+  },
+  eventCardArtistSelector: '.event-details h1',
+  eventCardDateSelector: '.event-info p',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+},
+{
+  venue: 'O2 Forum Kentish Town',
+  eventUrls: ['https://www.academymusicgroup.com/o2forumkentishtown/events/all'],
+  eventCardSelector: 'div.item-list li',
+  alternateProcessingConfig: {
+    newTabLinkSelector: '.event-actions a',
+  },
+  eventCardArtistSelector: '.event-details h1',
+  eventCardDateSelector: '.event-info p',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+},
+{
+  venue: 'O2 Academy Islington',
+  eventUrls: ['https://www.academymusicgroup.com/o2academyislington/events/all'],
+  eventCardSelector: 'div.item-list li',
+  alternateProcessingConfig: {
+    newTabLinkSelector: '.event-actions a',
+  },
+  eventCardArtistSelector: '.event-details h1',
+  eventCardDateSelector: '.event-info p',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+},
 ];
 
 export default CONFIG;

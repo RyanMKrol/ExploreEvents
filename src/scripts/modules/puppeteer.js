@@ -8,47 +8,64 @@ import puppeteer from 'puppeteer';
  */
 async function createBrowserAndPage() {
   const browser = await puppeteer.launch({ headless: false, devtools: true });
-  const page = await browser.newPage();
+
+  browser.createNewPage = async function createNewPage() {
+    const page = await this.newPage();
+
+    // create a method to wait for optional elements
+    page.waitForSelectorOptional = async function waitForSelectorOptional(selector, timeoutMs) {
+      const element = await Promise.race([
+        this.waitForSelector(selector, { timeout: 0 }),
+        new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
+      ]);
+
+      return element;
+    };
+
+    // create a method to wait for optional elements
+    page.gotoWithSafeTimeout = async function gotoWithSafeTimeout(url) {
+      const element = await Promise.race([
+        this.goto(url),
+        new Promise((resolve) => { setTimeout(() => resolve(), 3000); }),
+      ]);
+
+      return element;
+    };
+
+    // generally we don't need the network to actually idle, 15s is usually more than enough,
+    // but if the network idle's before then, we can go even faster!
+    // Note: in most cases, the network will idle before the 15s timeout
+    page.waitForNetworkIdleOptional = async function waitForNetworkIdleOptional(timeoutMs = 15000) {
+      await Promise.race([
+        this.waitForNetworkIdle(),
+        new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
+      ]);
+    };
+
+    // method to pause execution of the script until the user manually unsets the isPaused variable
+    page.pause = async function pause() {
+      await page.evaluate(() => {
+        window.isPaused = true;
+      });
+
+      // Log a message to indicate that the script is paused
+      console.log('Script is paused. Set window.isPaused = false in the browser console to resume.');
+
+      // Wait for the global variable to be set to false
+      await page.waitForFunction(() => !window.isPaused);
+
+      // in cases where this manual pause is needed, the page can often
+      // redirect, so we need to wait for that DOM to load to continue
+      await page.waitForTimeout(3000);
+    };
+
+    return page;
+  };
+
+  const page = await browser.createNewPage();
 
   // Set screen size
-  await page.setViewport({ width: 1080, height: 1024 });
-
-  // create a method to wait for optional elements
-  page.waitForSelectorOptional = async function waitForSelectorOptional(selector, timeoutMs) {
-    const element = await Promise.race([
-      this.waitForSelector(selector, { timeout: 0 }),
-      new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
-    ]);
-
-    return element;
-  };
-
-  // generally we don't need the network to actually idle, 15s is usually more than enough,
-  // but if the network idle's before then, we can go even faster!
-  // Note: in most cases, the network will idle before the 15s timeout
-  page.waitForNetworkIdleOptional = async function waitForNetworkIdleOptional(timeoutMs = 15000) {
-    await Promise.race([
-      this.waitForNetworkIdle(),
-      new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
-    ]);
-  };
-
-  // method to pause execution of the script until the user manually unsets the isPaused variable
-  page.pause = async function pause() {
-    await page.evaluate(() => {
-      window.isPaused = true;
-    });
-
-    // Log a message to indicate that the script is paused
-    console.log('Script is paused. Set window.isPaused = false in the browser console to resume.');
-
-    // Wait for the global variable to be set to false
-    await page.waitForFunction(() => !window.isPaused);
-
-    // in cases where this manual pause is needed, the page can often
-    // redirect, so we need to wait for that DOM to load to continue
-    await page.waitForTimeout(3000);
-  };
+  await page.setViewport({ width: 1080, height: 2000 });
 
   return { browser, page };
 }
@@ -113,6 +130,10 @@ async function scrollToBottomUntilNoMoreChanges(page) {
       retries += 1;
     }
   }
+
+  // once we've finished scrolling, we need to wait for the network
+  // to quiten down before doing any further processing
+  await page.waitForNetworkIdleOptional();
 }
 
 /**

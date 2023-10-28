@@ -12,9 +12,6 @@ export default function reportOutput(data) {
  */
 function printManualCheckReminders() {
   const manualCheckSites = [
-    'https://www.academymusicgroup.com/o2shepherdsbushempire/events/all',
-    'https://www.academymusicgroup.com/o2forumkentishtown/events/all',
-    'https://www.academymusicgroup.com/o2academyislington/events/all',
     'https://www.corsicastudios.com/calendar/corsica-studios',
     'https://www.thelexington.co.uk/events.php',
     'https://drumshedslondon.com/whats-on/',

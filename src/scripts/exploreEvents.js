@@ -26,18 +26,6 @@ const TIMEOUTS = {
 
 // -==============================
 
-// need a system to grab details from the event page
-// https://www.academymusicgroup.com/o2shepherdsbushempire/events/all
-// https://www.academymusicgroup.com/o2forumkentishtown/events/all
-// https://www.academymusicgroup.com/o2academyislington/events/all
-
-// -==============================
-
-// need a system to get around captcha:
-// https://www.royalalberthall.com/tickets/
-
-// -==============================
-
 // need a way to generate URLs for venues that are a pain with their load more logic
 
 // -==============================
@@ -52,6 +40,12 @@ const TIMEOUTS = {
 // for this instead of just gigs:
 
 // https://www.thegrace.london/whats-on/
+
+// ===================================
+
+// i need to know when this isn't working, so i should store some kind of file
+// that tracks previous numbers, and then compares new resuls to that - if they change
+// drastically, our page is broken
 
 let CONFIG;
 
@@ -69,7 +63,6 @@ let CONFIG;
   // using the previous results, remove any venues that have already processed from this run
   const venuesToProcess = await loadVenuesToProcess(results, ALL_CONFIGS);
 
-  // Launch the browser and open a new blank page
   const { browser, page } = await createBrowserAndPage();
 
   for (let j = 0; j < venuesToProcess.length; j += 1) {
@@ -83,31 +76,16 @@ let CONFIG;
     // some sites store their events across different distinct
     // pages, so we process them individually
     for (let i = 0; i < CONFIG.eventUrls.length; i += 1) {
-    // Navigate the page to a URL
+      // Navigate the page to a URL
       await page.goto(CONFIG.eventUrls[i]);
 
       console.log('Setting up page... ');
       await setupPage(page);
 
-      console.log('Scrolling to the bottom of this page...');
-      await scrollToBottomUntilNoMoreChanges(page);
-
-      console.log('Waiting for page to load...');
-      await page.waitForNetworkIdleOptional();
-
-      console.log('Maybe execute page load helpers...');
-      await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
-
       // the page load helper may result in a redirect to a new page, so we try
       // to dismiss the cookie notification, and disable scroll smoothing again
       console.log('Setting up page again... ');
       await setupPage(page);
-
-      console.log('Scrolling to the bottom of this page...');
-      await scrollToBottomUntilNoMoreChanges(page);
-
-      console.log('Waiting for page to load...');
-      await page.waitForNetworkIdleOptional();
 
       // limit the number of times we can click the "more events" button; some websites will
       // let you browse years into the future, so we need to stop at some point
@@ -116,7 +94,7 @@ let CONFIG;
         console.log('Fetching events from page...');
         const events = await page.$$(CONFIG.eventCardSelector);
 
-        await processPageEvents(events, resultsSet);
+        await processPageEvents(browser, events, resultsSet);
 
         // if there's nothing more to load, we're done
         if (!CONFIG.loadMoreButtonSelector) {
@@ -150,9 +128,6 @@ let CONFIG;
 
         console.log('Scrolling to the bottom of this page...');
         await scrollToBottomUntilNoMoreChanges(page);
-
-        console.log('Waiting for the page to load everything new');
-        await page.waitForNetworkIdleOptional();
       }
     }
 
@@ -166,10 +141,24 @@ let CONFIG;
 
 /**
  * For a given selector of events on the page, process each "card" to get the artist, and date
+ * @param {object} browser The browser object
  * @param {any} events Handles for all "event cards" on the page
  * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
  */
-async function processPageEvents(events, resultsSet) {
+async function processPageEvents(browser, events, resultsSet) {
+  const task = CONFIG.alternateProcessingConfig
+    ? processOutOfPageEvents(browser, events, resultsSet)
+    : processInPageEvents(events, resultsSet);
+
+  await task;
+}
+
+/**
+ * For a given selector of events on the page, process each "card" to get the artist, and date
+ * @param {any} events Handles for all "event cards" on the page
+ * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
+ */
+async function processInPageEvents(events, resultsSet) {
   await events.reduce((acc, event) => acc.then(async () => {
     try {
       const artist = await event.$eval(
@@ -187,6 +176,8 @@ async function processPageEvents(events, resultsSet) {
         (result) => result.textContent.trim(),
       ) : undefined;
 
+      console.log('Result: ', JSON.stringify({ artist, date, description }));
+
       resultsSet.add(JSON.stringify({ artist, date, description }));
     } catch (error) {
       // TODO: Start tracking how many times we fail, and do
@@ -195,6 +186,54 @@ async function processPageEvents(events, resultsSet) {
       console.log('Failed to process event card...', error);
     }
   }), Promise.resolve([]));
+}
+
+/**
+ * For a given selector of events on the page, find a link to each event
+ * page, visit that page, and pull the artist and date
+ * @param {object} browser The browser object
+ * @param {any} events Handles for all "event cards" on the page
+ * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
+ */
+async function processOutOfPageEvents(browser, events, resultsSet) {
+  const links = await events.reduce(async (accumulator, event) => {
+    const localAccumulator = await accumulator;
+
+    const link = await event.$eval(
+      CONFIG.alternateProcessingConfig.newTabLinkSelector,
+      (result) => result.href,
+    );
+
+    localAccumulator.push(link);
+
+    return localAccumulator;
+  }, []);
+
+  await links.reduce(async (accumulator, link) => {
+    const promiseHandle = await accumulator;
+
+    console.log('Create new page to grab event data...');
+    const secondPage = await browser.createNewPage();
+
+    console.log('Go to page...');
+    await secondPage.gotoWithSafeTimeout(link);
+
+    console.log('Setting up page again... ');
+    await setupPage(secondPage);
+
+    // grabbing a handle we know will always exist, then we can re-use the
+    // inPageEvent method to pull the single event details from that page
+    console.log('Grab page body...');
+    const body = await secondPage.$$('body');
+
+    console.log('Processing new page events...');
+    await processInPageEvents(body, resultsSet);
+
+    console.log('Closing tab...');
+    await secondPage.close();
+
+    return promiseHandle;
+  }, []);
 }
 
 /**
@@ -212,6 +251,12 @@ async function setupPage(page) {
     style.textContent = 'html, body { scroll-behavior: auto !important; }';
     document.head.appendChild(style);
   });
+
+  console.log('Scrolling to the bottom of this page...');
+  await scrollToBottomUntilNoMoreChanges(page);
+
+  console.log('Maybe execute page load helpers...');
+  await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
 }
 
 /**
