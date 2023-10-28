@@ -4,12 +4,11 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-unused-vars */
 
-import puppeteer from 'puppeteer';
 import fs from 'fs-extra';
 
-import reportOutput from './modules/reporting';
 import TOTAL_CONFIG from './modules/config';
 import PAGE_LOAD_HELPER_TYPES from './modules/constants';
+import createBrowserAndPage from './modules/puppeteer';
 
 const OUTPUT_FILE_LOC = `${process.cwd()}/output/progress.txt`;
 
@@ -56,12 +55,14 @@ const TIMEOUTS = {
 let CONFIG;
 
 (async function main() {
+  const results = await loadCurrentProgress();
+  const venuesToProcess = await loadVenuesToProcess(results);
+
   // Launch the browser and open a new blank page
   const { browser, page } = await createBrowserAndPage();
 
-  const totalResults = {};
-  for (let j = 0; j < TOTAL_CONFIG.length; j += 1) {
-    CONFIG = TOTAL_CONFIG[j];
+  for (let j = 0; j < venuesToProcess.length; j += 1) {
+    CONFIG = venuesToProcess[j];
 
     console.log('*****************************************************');
 
@@ -175,10 +176,10 @@ let CONFIG;
 
     // writeOrAppendToFile;
 
-    totalResults[CONFIG.venue] = Array.from(resultsSet);
+    results[CONFIG.venue] = Array.from(resultsSet);
 
-    await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(totalResults, null, 2));
-    console.log(totalResults);
+    await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(results, null, 2));
+    console.log(results);
   }
 
   await browser.close();
@@ -191,11 +192,6 @@ let CONFIG;
 async function setupPage(page) {
   console.log('maybe acknowledging cookies...');
   await maybeAcknowledgeCookieModal(page);
-
-  // we wait here after acking the cookie because some pages will
-  // refresh after clicking it; after refreshing, the DOM won't exist,
-  // so the next step of appending the style will crash the app
-  await pauseBrowser(page, 1000);
 
   // disables smooth scrolling which can intefere with the programatic scrolling this script does
   console.log('disabling smooth scrolling...');
@@ -222,6 +218,11 @@ async function maybeAcknowledgeCookieModal(page) {
 
   console.log('maybe doing something with the cookie button');
   await cookieButton?.evaluate((el) => el.click());
+
+  // we wait here after acking the cookie because some pages will
+  // refresh after clicking it; after refreshing, the DOM won't exist,
+  // so the next step of appending the style will crash the app
+  await pauseBrowser(page, 3000);
 }
 
 /**
@@ -335,35 +336,29 @@ async function autoScroll(page) {
 }
 
 /**
- * Sets up a browser and page object
- * @returns {object} An object containing a browser and page
+ * Fetches how much progress has been made on the list of venues
+ * @returns {object} An object representing how much progress has been made
  */
-async function createBrowserAndPage() {
-  const browser = await puppeteer.launch({ headless: false });
-  const page = await browser.newPage();
+async function loadCurrentProgress() {
+  return fs.pathExistsSync(OUTPUT_FILE_LOC) ? fs.readJson(OUTPUT_FILE_LOC) : {};
+}
 
-  // Set screen size
-  await page.setViewport({ width: 1080, height: 1024 });
+/**
+ * Loads the venues that need processing, given how many venues
+ * have already been processed
+ * @param {object} currentProgressResults A blob representing venues that
+ * have already been processed
+ * @returns {object} The config that will be processed by our script
+ */
+async function loadVenuesToProcess(currentProgressResults) {
+  const alreadyProcessedVenues = Object.keys(currentProgressResults);
 
-  // create a method to wait for optional elements
-  page.waitForSelectorOptional = async function waitForSelectorOptional(selector, timeoutMs) {
-    const element = await Promise.race([
-      this.waitForSelector(selector, { timeout: 0 }),
-      new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
-    ]);
+  const venuesToProcess = TOTAL_CONFIG.reduce((acc, config) => {
+    if (!alreadyProcessedVenues.includes(config.venue)) {
+      acc.push(config);
+    }
+    return acc;
+  }, []);
 
-    return element;
-  };
-
-  // generally we don't need the network to actually idle, 15s is usually more than enough,
-  // but if the network idle's before then, we can go even faster!
-  // Note: in most cases, the network will idle before the 15s timeout
-  page.waitForNetworkIdleOptional = async function waitForNetworkIdleOptional(timeoutMs = 15000) {
-    await Promise.race([
-      this.waitForNetworkIdle(),
-      new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
-    ]);
-  };
-
-  return { browser, page };
+  return venuesToProcess;
 }
