@@ -7,7 +7,7 @@ import puppeteer from 'puppeteer';
  * @returns {object} An object containing a browser and page
  */
 async function createBrowserAndPage() {
-  const browser = await puppeteer.launch({ headless: false, devtools: true });
+  const browser = await puppeteer.launch({ headless: false });
 
   browser.createNewPage = async function createNewPage() {
     const page = await this.newPage();
@@ -65,7 +65,7 @@ async function createBrowserAndPage() {
   const page = await browser.createNewPage();
 
   // Set screen size
-  await page.setViewport({ width: 1080, height: 2000 });
+  await page.setViewport({ width: 1080, height: 1920 });
 
   return { browser, page };
 }
@@ -144,7 +144,7 @@ async function scrollUntilStopping(page) {
   await page.evaluate(async () => {
     await new Promise((resolve) => {
       const TIME_BETWEEN_TICKS = 50;
-      const SCROLL_DISTANCE_PER_TICK = 2000;
+      const SCROLL_DISTANCE_PER_TICK = 500;
 
       let totalHeight = 0;
       const timer = setInterval(() => {

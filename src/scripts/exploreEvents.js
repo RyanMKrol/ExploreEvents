@@ -3,10 +3,9 @@
 
 /* eslint-disable no-await-in-loop */
 
-import fs from 'fs-extra';
-
-import ALL_CONFIGS from './modules/config';
+import VENUES_CONFIG from './modules/config';
 import PAGE_LOAD_HELPER_TYPES from './modules/constants';
+
 import {
   clickElement,
   createBrowserAndPage,
@@ -15,7 +14,11 @@ import {
   waitForManualUpdate,
 } from './modules/puppeteer';
 
-const OUTPUT_FILE_LOC = `${process.cwd()}/output/progress.txt`;
+import {
+  readProgressFile,
+  writeProgressFile,
+} from './modules/files/progress';
+
 const MAX_MORE_EVENTS_CLICKS = 10;
 
 const TIMEOUTS = {
@@ -47,132 +50,146 @@ const TIMEOUTS = {
 // that tracks previous numbers, and then compares new resuls to that - if they change
 // drastically, our page is broken
 
-let CONFIG;
-
 /**
  * Run the script
  */
 (async function main() {
   // load any progress made by a previous run of this script (delete the
   // progress.txt file if you'd like to start from scratch)
-  const rawPreviousResults = await loadCurrentProgress();
-
-  // remove any results that indicate a failed attempt to pull event data
-  const results = await removeEmptyResults(rawPreviousResults);
+  const results = await readProgressFile();
+  console.log(results);
 
   // using the previous results, remove any venues that have already processed from this run
-  const venuesToProcess = await loadVenuesToProcess(results, ALL_CONFIGS);
+  const venuesToProcess = await loadVenuesToProcess(results, VENUES_CONFIG);
 
   const { browser, page } = await createBrowserAndPage();
 
   for (let j = 0; j < venuesToProcess.length; j += 1) {
-    CONFIG = venuesToProcess[j];
+    const jobConfig = venuesToProcess[j];
 
     console.log('*****************************************************');
-    console.log(`Starting crawl for this venue: ${CONFIG.venue}`);
+    console.log(`Starting crawl for this venue: ${jobConfig.venue}`);
 
     const resultsSet = new Set();
 
     // some sites store their events across different distinct
     // pages, so we process them individually
-    for (let i = 0; i < CONFIG.eventUrls.length; i += 1) {
+    for (let i = 0; i < jobConfig.eventUrls.length; i += 1) {
       // Navigate the page to a URL
-      await page.goto(CONFIG.eventUrls[i]);
+      await page.goto(jobConfig.eventUrls[i]);
 
       console.log('Setting up page... ');
-      await setupPage(page);
+      await setupPage(page, jobConfig);
 
       // the page load helper may result in a redirect to a new page, so we try
       // to dismiss the cookie notification, and disable scroll smoothing again
       console.log('Setting up page again... ');
-      await setupPage(page);
+      await setupPage(page, jobConfig);
 
       // limit the number of times we can click the "more events" button; some websites will
       // let you browse years into the future, so we need to stop at some point
       let moreEventsCount = 0;
+
       while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
         console.log('Fetching events from page...');
-        const events = await page.$$(CONFIG.eventCardSelector);
+        const events = await page.$$(jobConfig.eventCardSelector);
 
-        await processPageEvents(browser, events, resultsSet);
+        await processPageEvents(browser, jobConfig, events, resultsSet);
 
-        // if there's nothing more to load, we're done
-        if (!CONFIG.loadMoreButtonSelector) {
-          console.log('No configured "load more" button');
-          break;
-        }
-
-        console.log('Trying to find the "load more" button...');
-        // TODO: we should guarantee that the more events button is clicked at least
-        // once, otherwise the underlying DOM may have changed and we might miss events
-        const loadMoreButton = await page.$(CONFIG.loadMoreButtonSelector);
-        if (!loadMoreButton) {
-          console.log('Could not find a "load more" button');
-          break;
-        }
-
-        console.log('Clicking the "load more" button');
-        try {
-          await page.click(CONFIG.loadMoreButtonSelector);
-
-          // have to wait for the network to idle before scrolling because the "load more" button
-          // can occasionally load a new page entirely, which will cause any scrolling to crash
-          await page.waitForNetworkIdleOptional();
-
+        const hasLoadedMore = await maybeLoadMore(page, jobConfig);
+        if (hasLoadedMore) {
           moreEventsCount += 1;
-        } catch (err) {
-          // TODO: handle this better by checking the visibility of the button
-          console.log('Failed to click the "load more" button', err);
+        } else {
           break;
         }
-
-        console.log('Scrolling to the bottom of this page...');
-        await scrollToBottomUntilNoMoreChanges(page);
       }
     }
 
-    results[CONFIG.venue] = Array.from(resultsSet);
+    results[jobConfig.venue] = Array.from(resultsSet);
 
-    await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(results, null, 2));
+    await writeProgressFile(results);
   }
 
   await browser.close();
 }());
 
 /**
+ * Attempts to load more content on to the page
+ * @param {object} page The browser's page object
+ * @param {object} jobConfig config for the properties needed to run a job for a given venue
+ * @returns {boolean} Whether more content was loaded
+ */
+async function maybeLoadMore(page, jobConfig) {
+  // if there's nothing more to load, we're done
+  if (!jobConfig.loadMoreButtonSelector) {
+    console.log('No configured "load more" button');
+    return false;
+  }
+
+  console.log('Trying to find the "load more" button...');
+  // TODO: we should guarantee that the more events button is clicked at least
+  // once, otherwise the underlying DOM may have changed and we might miss events
+  const loadMoreButton = await page.$(jobConfig.loadMoreButtonSelector);
+  if (!loadMoreButton) {
+    console.log('Could not find a "load more" button');
+    return false;
+  }
+
+  console.log('Clicking the "load more" button');
+  try {
+    await page.click(jobConfig.loadMoreButtonSelector);
+
+    // have to wait for the network to idle before scrolling because the "load more" button
+    // can occasionally load a new page entirely, which will cause any scrolling to crash
+    await page.waitForNetworkIdleOptional();
+  } catch (err) {
+    // TODO: handle this better by checking the visibility of the button
+    console.log('Failed to click the "load more" button', err);
+    return false;
+  }
+
+  console.log('Scrolling to the bottom of this page...');
+  await scrollToBottomUntilNoMoreChanges(page);
+
+  return true;
+}
+
+/**
  * For a given selector of events on the page, process each "card" to get the artist, and date
  * @param {object} browser The browser object
+ * @param {object} jobConfig config for the properties needed to run a job for a given venue
  * @param {any} events Handles for all "event cards" on the page
  * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
  */
-async function processPageEvents(browser, events, resultsSet) {
-  const task = CONFIG.alternateProcessingConfig
-    ? processOutOfPageEvents(browser, events, resultsSet)
-    : processInPageEvents(events, resultsSet);
+async function processPageEvents(browser, jobConfig, events, resultsSet) {
+  const task = jobConfig.alternateProcessingConfig
+    ? processOutOfPageEvents(browser, jobConfig, events, resultsSet)
+    : processInPageEvents(jobConfig, events, resultsSet);
 
   await task;
 }
 
 /**
  * For a given selector of events on the page, process each "card" to get the artist, and date
+ * @param {object} jobConfig config for the properties needed to run a job for a given venue
  * @param {any} events Handles for all "event cards" on the page
  * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
  */
-async function processInPageEvents(events, resultsSet) {
+async function processInPageEvents(jobConfig, events, resultsSet) {
   await events.reduce((acc, event) => acc.then(async () => {
     try {
       const artist = await event.$eval(
-        CONFIG.eventCardArtistSelector,
+        jobConfig.eventCardArtistSelector,
         (result) => result.textContent.trim(),
       );
 
       const date = await event.$eval(
-        CONFIG.eventCardDateSelector,
+        jobConfig.eventCardDateSelector,
         (result) => result.textContent.trim(),
       );
 
-      const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
-        CONFIG.eventCardDescriptionSelector,
+      const description = jobConfig.eventCardDescriptionSelector ? await event.$eval(
+        jobConfig.eventCardDescriptionSelector,
         (result) => result.textContent.trim(),
       ) : undefined;
 
@@ -192,15 +209,16 @@ async function processInPageEvents(events, resultsSet) {
  * For a given selector of events on the page, find a link to each event
  * page, visit that page, and pull the artist and date
  * @param {object} browser The browser object
+ * @param {object} jobConfig config for the properties needed to run a job for a given venue
  * @param {any} events Handles for all "event cards" on the page
  * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
  */
-async function processOutOfPageEvents(browser, events, resultsSet) {
+async function processOutOfPageEvents(browser, jobConfig, events, resultsSet) {
   const links = await events.reduce(async (accumulator, event) => {
     const localAccumulator = await accumulator;
 
     const link = await event.$eval(
-      CONFIG.alternateProcessingConfig.newTabLinkSelector,
+      jobConfig.alternateProcessingConfig.newTabLinkSelector,
       (result) => result.href,
     );
 
@@ -219,7 +237,7 @@ async function processOutOfPageEvents(browser, events, resultsSet) {
     await secondPage.gotoWithSafeTimeout(link);
 
     console.log('Setting up page again... ');
-    await setupPage(secondPage);
+    await setupPage(secondPage, jobConfig);
 
     // grabbing a handle we know will always exist, then we can re-use the
     // inPageEvent method to pull the single event details from that page
@@ -227,7 +245,7 @@ async function processOutOfPageEvents(browser, events, resultsSet) {
     const body = await secondPage.$$('body');
 
     console.log('Processing new page events...');
-    await processInPageEvents(body, resultsSet);
+    await processInPageEvents(jobConfig, body, resultsSet);
 
     console.log('Closing tab...');
     await secondPage.close();
@@ -239,10 +257,11 @@ async function processOutOfPageEvents(browser, events, resultsSet) {
 /**
  * Sets up the page to be ready for scraping
  * @param {object} page The browser page object
+ * @param {object} jobConfig config for the properties needed to run a job for a given venue
  */
-async function setupPage(page) {
+async function setupPage(page, jobConfig) {
   console.log('Maybe acknowledging cookies...');
-  await maybeAcknowledgeCookieModal(page);
+  await maybeAcknowledgeCookieModal(page, jobConfig);
 
   // disables smooth scrolling which can intefere with the programatic scrolling this script does
   console.log('Disabling smooth scrolling...');
@@ -256,21 +275,22 @@ async function setupPage(page) {
   await scrollToBottomUntilNoMoreChanges(page);
 
   console.log('Maybe execute page load helpers...');
-  await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
+  await maybeExecutePageLoadHelpers(page, jobConfig.pageLoadHelper);
 }
 
 /**
  * Acknowledges a cookie modal if one is present
  * @param {object} page The browser page object
+ * @param {object} jobConfig config for the properties needed to run a job for a given venue
  */
-async function maybeAcknowledgeCookieModal(page) {
-  if (!CONFIG.cookiePolicyModalAcceptButtonSelector) {
+async function maybeAcknowledgeCookieModal(page, jobConfig) {
+  if (!jobConfig.cookiePolicyModalAcceptButtonSelector) {
     return;
   }
 
   await clickElement(
     page,
-    CONFIG.cookiePolicyModalAcceptButtonSelector,
+    jobConfig.cookiePolicyModalAcceptButtonSelector,
     TIMEOUTS.COOKIE_BUTTON_TIMEOUT_WAIT_MS,
   );
 
@@ -315,34 +335,6 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
     default:
       throw new Error('Unrecognised page load helper');
   }
-}
-
-/**
- * Fetches how much progress has been made on the list of venues
- * @returns {object} An object representing how much progress has been made
- */
-async function loadCurrentProgress() {
-  return fs.pathExistsSync(OUTPUT_FILE_LOC) ? fs.readJson(OUTPUT_FILE_LOC) : {};
-}
-
-/**
- * When we fail to scrape, we'll store a set with 0 items. To be able
- *  to retry these venues, we need to remove the empty arrays from the
- *  results before starting the script
- * @param {object} data previous result set
- * @returns {object} cleared result set
- */
-async function removeEmptyResults(data) {
-  const newResults = Object.keys(data).reduce((acc, key) => {
-    if (data[key].length !== 0) {
-      acc[key] = data[key];
-    }
-    return acc;
-  }, {});
-
-  await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(newResults, null, 2));
-
-  return newResults;
 }
 
 /**
