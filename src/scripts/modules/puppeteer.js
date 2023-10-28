@@ -1,3 +1,5 @@
+/* eslint-disable no-await-in-loop */
+
 import puppeteer from 'puppeteer';
 
 /**
@@ -34,4 +36,88 @@ async function createBrowserAndPage() {
   return { browser, page };
 }
 
-export default createBrowserAndPage;
+/**
+ * Removes an element from the page using a selector
+ * @param {object} page The browser page object
+ * @param {string} selector String to access the item you want to remove
+ */
+async function removeElement(page, selector) {
+  await page.evaluate((x) => {
+    const element = document.querySelector(x);
+    if (element) {
+      element.parentNode.removeChild(element);
+    }
+  }, selector);
+}
+
+/**
+ * Dismisses an element from the page using a selector
+ * @param {object} page The browser page object
+ * @param {string} selector String to access the item you want to dismiss
+ * @param timeout
+ */
+async function clickElement(page, selector, timeout) {
+  const element = await page.waitForSelectorOptional(
+    selector,
+    timeout,
+  );
+
+  await element?.evaluate((el) => el.click());
+}
+
+/**
+ * Keeps scrolling to the bottom of the page until we're unable to scroll anymore
+ * @param {object} page The browser page object
+ */
+async function scrollToBottomUntilNoMoreChanges(page) {
+  const MAX_RETRIES = 3;
+  const TIME_BETWEEN_RETRIES_MS = 1000;
+
+  let previousHeight;
+  let retries = 0;
+
+  while (retries < MAX_RETRIES) {
+    const currentHeight = await page.evaluate(() => document.body.scrollHeight);
+
+    if (previousHeight !== currentHeight) {
+      previousHeight = currentHeight;
+      await scrollUntilStopping(page);
+      retries = 0;
+    } else {
+      await page.waitForTimeout(TIME_BETWEEN_RETRIES_MS);
+      retries += 1;
+    }
+  }
+}
+
+/**
+ * Responsible for scrolling as far as the page will allow
+ * @param {object} page The browser page object
+ */
+async function scrollUntilStopping(page) {
+  await page.evaluate(async () => {
+    await new Promise((resolve) => {
+      const TIME_BETWEEN_TICKS = 50;
+      const SCROLL_DISTANCE_PER_TICK = 2000;
+
+      let totalHeight = 0;
+      const timer = setInterval(() => {
+        const { scrollHeight } = document.body;
+        window.scrollBy(0, SCROLL_DISTANCE_PER_TICK, { behavior: 'instant' });
+        totalHeight += SCROLL_DISTANCE_PER_TICK;
+
+        if (totalHeight >= scrollHeight) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, TIME_BETWEEN_TICKS);
+    });
+  });
+}
+
+export {
+  clickElement,
+  createBrowserAndPage,
+  removeElement,
+  scrollToBottomUntilNoMoreChanges,
+};

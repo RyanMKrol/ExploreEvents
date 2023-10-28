@@ -8,7 +8,12 @@ import fs from 'fs-extra';
 
 import TOTAL_CONFIG from './modules/config';
 import PAGE_LOAD_HELPER_TYPES from './modules/constants';
-import createBrowserAndPage from './modules/puppeteer';
+import {
+  clickElement,
+  createBrowserAndPage,
+  removeElement,
+  scrollToBottomUntilNoMoreChanges,
+} from './modules/puppeteer';
 
 const OUTPUT_FILE_LOC = `${process.cwd()}/output/progress.txt`;
 
@@ -55,7 +60,8 @@ const TIMEOUTS = {
 let CONFIG;
 
 (async function main() {
-  const results = await loadCurrentProgress();
+  const rawPreviousResults = await loadCurrentProgress();
+  const results = await removeEmptyResults(rawPreviousResults);
   const venuesToProcess = await loadVenuesToProcess(results);
 
   // Launch the browser and open a new blank page
@@ -211,13 +217,11 @@ async function maybeAcknowledgeCookieModal(page) {
     return;
   }
 
-  const cookieButton = await page.waitForSelectorOptional(
+  await clickElement(
+    page,
     CONFIG.cookiePolicyModalAcceptButtonSelector,
     TIMEOUTS.COOKIE_BUTTON_TIMEOUT_WAIT_MS,
   );
-
-  console.log('maybe doing something with the cookie button');
-  await cookieButton?.evaluate((el) => el.click());
 
   // we wait here after acking the cookie because some pages will
   // refresh after clicking it; after refreshing, the DOM won't exist,
@@ -246,10 +250,17 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
 
   switch (helperConfig.type) {
     case PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT:
-      await removeElement(page, helperConfig.options.selector);
+      await removeElement(
+        page,
+        helperConfig.options.selector,
+      );
       break;
     case PAGE_LOAD_HELPER_TYPES.CLICK_ELEMENT:
-      await clickElement(page, helperConfig.options.selector);
+      await clickElement(
+        page,
+        helperConfig.options.selector,
+        TIMEOUTS.PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS,
+      );
       break;
     default:
       console.log('Doing nothing extra to load the page');
@@ -258,89 +269,31 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
 }
 
 /**
- * Dismisses an element from the page using a selector
- * @param {object} page The browser page object
- * @param {string} selector String to access the item you want to dismiss
- */
-async function clickElement(page, selector) {
-  const element = await page.waitForSelectorOptional(
-    selector,
-    TIMEOUTS.PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS,
-  );
-
-  await element?.evaluate((el) => el.click());
-}
-
-/**
- * Removes an element from the page using a selector
- * @param {object} page The browser page object
- * @param {string} selector String to access the item you want to remove
- */
-async function removeElement(page, selector) {
-  await page.evaluate((x) => {
-    const element = document.querySelector(x);
-    if (element) {
-      element.parentNode.removeChild(element);
-    }
-  }, selector);
-}
-
-/**
- * Keeps scrolling to the bottom of the page until we're unable to scroll anymore
- * @param {object} page The browser page object
- */
-async function scrollToBottomUntilNoMoreChanges(page) {
-  const MAX_RETRIES = 3;
-  const TIME_BETWEEN_RETRIES_MS = 1000;
-
-  let previousHeight;
-  let retries = 0;
-
-  while (retries < MAX_RETRIES) {
-    const currentHeight = await page.evaluate(() => document.body.scrollHeight);
-
-    if (previousHeight !== currentHeight) {
-      previousHeight = currentHeight;
-      await autoScroll(page);
-      retries = 0;
-    } else {
-      await page.waitForTimeout(TIME_BETWEEN_RETRIES_MS);
-      retries += 1;
-    }
-  }
-}
-
-/**
- * Responsible for scrolling as far as the page will allow
- * @param {object} page The browser page object
- */
-async function autoScroll(page) {
-  await page.evaluate(async () => {
-    await new Promise((resolve, reject) => {
-      const TIME_BETWEEN_TICKS = 50;
-      const SCROLL_DISTANCE_PER_TICK = 2000;
-
-      let totalHeight = 0;
-      const timer = setInterval(() => {
-        const { scrollHeight } = document.body;
-        window.scrollBy(0, SCROLL_DISTANCE_PER_TICK, { behavior: 'instant' });
-        totalHeight += SCROLL_DISTANCE_PER_TICK;
-
-        if (totalHeight >= scrollHeight) {
-          clearInterval(timer);
-          resolve();
-        }
-      }, TIME_BETWEEN_TICKS);
-    });
-  });
-}
-
-/**
  * Fetches how much progress has been made on the list of venues
  * @returns {object} An object representing how much progress has been made
  */
 async function loadCurrentProgress() {
   return fs.pathExistsSync(OUTPUT_FILE_LOC) ? fs.readJson(OUTPUT_FILE_LOC) : {};
+}
+
+/**
+ * When we fail to scrape, we'll store a set with 0 items. To be able
+ *  to retry these venues, we need to remove the empty arrays from the
+ *  results before starting the script
+ * @param {object} data previous result set
+ * @returns {object} cleared result set
+ */
+async function removeEmptyResults(data) {
+  const newResults = Object.keys(data).reduce((acc, key) => {
+    if (data[key].length !== 0) {
+      acc[key] = data[key];
+    }
+    return acc;
+  }, {});
+
+  await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(newResults, null, 2));
+
+  return newResults;
 }
 
 /**
