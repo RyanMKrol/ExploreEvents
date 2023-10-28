@@ -1,9 +1,7 @@
 #!/usr/bin/env node
-/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-loop-func */
 
 /* eslint-disable no-await-in-loop */
-/* eslint-disable camelcase */
-/* eslint-disable no-unused-vars */
 
 import fs from 'fs-extra';
 
@@ -57,14 +55,18 @@ const TIMEOUTS = {
 
 let CONFIG;
 
-// Define a pause function
 /**
- *
- * @param page
+ * Run the script
  */
 (async function main() {
+  // load any progress made by a previous run of this script (delete the
+  // progress.txt file if you'd like to start from scratch)
   const rawPreviousResults = await loadCurrentProgress();
+
+  // remove any results that indicate a failed attempt to pull event data
   const results = await removeEmptyResults(rawPreviousResults);
+
+  // using the previous results, remove any venues that have already processed from this run
   const venuesToProcess = await loadVenuesToProcess(results, ALL_CONFIGS);
 
   // Launch the browser and open a new blank page
@@ -74,8 +76,7 @@ let CONFIG;
     CONFIG = venuesToProcess[j];
 
     console.log('*****************************************************');
-
-    console.log(CONFIG.venue, CONFIG.eventUrls);
+    console.log(`Starting crawl for this venue: ${CONFIG.venue}`);
 
     const resultsSet = new Set();
 
@@ -85,135 +86,127 @@ let CONFIG;
     // Navigate the page to a URL
       await page.goto(CONFIG.eventUrls[i]);
 
-      console.log('setting up page... ');
+      console.log('Setting up page... ');
       await setupPage(page);
 
       console.log('Scrolling to the bottom of this page...');
       await scrollToBottomUntilNoMoreChanges(page);
-      console.log('Finished scrolling to the bottom of the page');
 
-      console.log('waiting for page to load...');
+      console.log('Waiting for page to load...');
       await page.waitForNetworkIdleOptional();
-      console.log('page has loaded');
 
-      console.log('maybe execute page load helpers...');
+      console.log('Maybe execute page load helpers...');
       await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
-      console.log('page load helpers done');
 
-      console.log('setting up page again... ');
+      // the page load helper may result in a redirect to a new page, so we try
+      // to dismiss the cookie notification, and disable scroll smoothing again
+      console.log('Setting up page again... ');
       await setupPage(page);
 
       console.log('Scrolling to the bottom of this page...');
       await scrollToBottomUntilNoMoreChanges(page);
-      console.log('Finished scrolling to the bottom of the page');
 
-      console.log('waiting for page to load...');
+      console.log('Waiting for page to load...');
       await page.waitForNetworkIdleOptional();
-      console.log('page has loaded');
 
       // limit the number of times we can click the "more events" button; some websites will
       // let you browse years into the future, so we need to stop at some point
       let moreEventsCount = 0;
       while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
-        console.log('waiting to fetch events from page...');
+        console.log('Fetching events from page...');
         const events = await page.$$(CONFIG.eventCardSelector);
-        console.log('events have loaded');
 
-        // eslint-disable-next-line no-loop-func
-        await events.reduce((acc, event) => acc.then(async () => {
-          try {
-            const artist = await event.$eval(
-              CONFIG.eventCardArtistSelector,
-              (result) => result.textContent.trim(),
-            );
+        await processPageEvents(events, resultsSet);
 
-            const date = await event.$eval(
-              CONFIG.eventCardDateSelector,
-              (result) => result.textContent.trim(),
-            );
-
-            const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
-              CONFIG.eventCardDescriptionSelector,
-              (result) => result.textContent.trim(),
-            ) : undefined;
-
-            resultsSet.add(JSON.stringify({ artist, date, description }));
-          } catch (error) {
-            // TODO: Start tracking how many times we fail, and do
-            // something when that number is too high
-            // This page currently has this issue - https://www.thewaitingroomn16.com/
-            console.log('there was an error so we skipped this many items', error);
-          }
-        }), Promise.resolve([]));
-
-        console.log('added a round of things');
         // if there's nothing more to load, we're done
         if (!CONFIG.loadMoreButtonSelector) {
-          console.log('no selector in config skipping');
+          console.log('No configured "load more" button');
           break;
         }
 
-        console.log('grabbing a button to load more');
+        console.log('Trying to find the "load more" button...');
         // TODO: we should guarantee that the more events button is clicked at least
         // once, otherwise the underlying DOM may have changed and we might miss events
         const loadMoreButton = await page.$(CONFIG.loadMoreButtonSelector);
         if (!loadMoreButton) {
-          console.log('the button does not exist apparently');
+          console.log('Could not find a "load more" button');
           break;
         }
 
-        console.log('trying to click the load more button');
+        console.log('Clicking the "load more" button');
         try {
-          console.log('clicking');
           await page.click(CONFIG.loadMoreButtonSelector);
-          console.log('have clicked');
 
           // have to wait for the network to idle before scrolling because the "load more" button
           // can occasionally load a new page entirely, which will cause any scrolling to crash
-          console.log('waiting for network idle');
           await page.waitForNetworkIdleOptional();
-          console.log('network idle');
 
           moreEventsCount += 1;
         } catch (err) {
           // TODO: handle this better by checking the visibility of the button
-          console.log(err);
-          console.log("the load more button likely wasn't visible, so this failed");
+          console.log('Failed to click the "load more" button', err);
           break;
         }
 
         console.log('Scrolling to the bottom of this page...');
         await scrollToBottomUntilNoMoreChanges(page);
-        console.log('Finished scrolling to the bottom of the page');
 
-        // wait for the new events to load after loading more
-        console.log('waiting for the page to load everything new');
+        console.log('Waiting for the page to load everything new');
         await page.waitForNetworkIdleOptional();
       }
     }
 
-    const resultString = JSON.stringify(Array.from(resultsSet));
-    console.log(resultString);
-
     results[CONFIG.venue] = Array.from(resultsSet);
 
     await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(results, null, 2));
-    console.log(results);
   }
 
   await browser.close();
 }());
 
 /**
+ * For a given selector of events on the page, process each "card" to get the artist, and date
+ * @param {any} events Handles for all "event cards" on the page
+ * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
+ */
+async function processPageEvents(events, resultsSet) {
+  await events.reduce((acc, event) => acc.then(async () => {
+    try {
+      const artist = await event.$eval(
+        CONFIG.eventCardArtistSelector,
+        (result) => result.textContent.trim(),
+      );
+
+      const date = await event.$eval(
+        CONFIG.eventCardDateSelector,
+        (result) => result.textContent.trim(),
+      );
+
+      const description = CONFIG.eventCardDescriptionSelector ? await event.$eval(
+        CONFIG.eventCardDescriptionSelector,
+        (result) => result.textContent.trim(),
+      ) : undefined;
+
+      resultsSet.add(JSON.stringify({ artist, date, description }));
+    } catch (error) {
+      // TODO: Start tracking how many times we fail, and do
+      // something when that number is too high
+      // This page currently has this issue - https://www.thewaitingroomn16.com/
+      console.log('Failed to process event card...', error);
+    }
+  }), Promise.resolve([]));
+}
+
+/**
  * Sets up the page to be ready for scraping
  * @param {object} page The browser page object
  */
 async function setupPage(page) {
-  console.log('maybe acknowledging cookies...');
+  console.log('Maybe acknowledging cookies...');
   await maybeAcknowledgeCookieModal(page);
 
   // disables smooth scrolling which can intefere with the programatic scrolling this script does
-  console.log('disabling smooth scrolling...');
+  console.log('Disabling smooth scrolling...');
   await page.evaluate(() => {
     const style = document.createElement('style');
     style.textContent = 'html, body { scroll-behavior: auto !important; }';
@@ -254,12 +247,14 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
 
   switch (helperConfig.type) {
     case PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT:
+      console.log('Running REMOVE_ELEMENT page load helper...');
       await removeElement(
         page,
         helperConfig.options.selector,
       );
       break;
     case PAGE_LOAD_HELPER_TYPES.CLICK_ELEMENT:
+      console.log('Running CLICK_ELEMENT page load helper...');
       await clickElement(
         page,
         helperConfig.options.selector,
@@ -267,13 +262,13 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
       );
       break;
     case PAGE_LOAD_HELPER_TYPES.MANUAL_INTERACTION:
+      console.log('Running MANUAL_INTERACTION page load helper...');
       await waitForManualUpdate(
         page,
       );
       break;
     default:
-      console.log('Doing nothing extra to load the page');
-      break;
+      throw new Error('Unrecognised page load helper');
   }
 }
 
