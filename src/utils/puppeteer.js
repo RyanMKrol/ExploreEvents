@@ -65,7 +65,7 @@ async function createBrowserAndPage() {
   const page = await browser.createNewPage();
 
   // Set screen size
-  await page.setViewport({ width: 1080, height: 1920 });
+  await page.setViewport({ width: 1080, height: 1080 });
 
   return { browser, page };
 }
@@ -88,7 +88,7 @@ async function removeElement(page, selector) {
  * Dismisses an element from the page using a selector
  * @param {object} page The browser page object
  * @param {string} selector String to access the item you want to dismiss
- * @param timeout
+ * @param {number} timeout How long to wait before moving on
  */
 async function clickElement(page, selector, timeout) {
   const element = await page.waitForSelectorOptional(
