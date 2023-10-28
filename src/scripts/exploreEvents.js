@@ -6,6 +6,8 @@
 
 import puppeteer from 'puppeteer';
 
+import reportOutput from './modules/reporting';
+
 const MAX_MORE_EVENTS_CLICKS = 10;
 const TIMEOUTS = {
   COOKIE_BUTTON_TIMEOUT_WAIT_MS: 3000,
@@ -16,166 +18,6 @@ const PAGE_LOAD_HELPER_TYPES = {
   SCROLL_TILL_DONE: 1,
   REMOVE_ELEMENT: 2,
   CLICK_ELEMENT: 3,
-};
-
-const CONFIG_Roundhouse = {
-  venue: 'Roundhouse',
-  eventUrls: ['https://www.roundhouse.org.uk/whats-on/?type=event'],
-  eventCardSelector: '.event-card',
-  eventCardArtistSelector: '.event-card__title',
-  eventCardDateSelector: '.event-card__details',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: '.button--loadmore',
-  cookiePolicyModalAcceptButtonSelector: '.cookie-policy__popup .button--primary',
-  pageLoadHelper: {
-    type: PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT,
-    options: {
-      selector: '.filters-bar',
-    },
-  },
-};
-
-const CONFIG_EartH = {
-  venue: 'EartH',
-  eventUrls: ['https://earthackney.co.uk/events/'],
-  eventCardSelector: '.list--events__item',
-  eventCardArtistSelector: '.list--events__item__title',
-  eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
-  eventCardDescriptionSelector: '.list--events__item__description',
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_VillageUnderground = {
-  venue: 'Village Underground',
-  eventUrls: ['https://villageunderground.co.uk/events/'],
-  eventCardSelector: '.list--events__item',
-  eventCardArtistSelector: '.list--events__item__title',
-  eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
-  eventCardDescriptionSelector: '.list--events__item__description',
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_TheO2 = {
-  venue: 'The O2',
-  eventUrls: ['https://www.theo2.co.uk/events/venue/the-o2-arena'],
-  eventCardSelector: '.eventItem',
-  eventCardArtistSelector: 'h3',
-  eventCardDateSelector: '.date.divider-date',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: '#loadMoreEvents',
-  cookiePolicyModalAcceptButtonSelector: '#onetrust-button-group #onetrust-accept-btn-handler',
-};
-
-const CONFIG_Omeara = {
-  venue: 'Omeara',
-  eventUrls: ['https://omearalondon.com/events/?event-type=live&currentpage=1'],
-  eventCardSelector: '.events-grid-view__event-card',
-  eventCardArtistSelector: '.event-title',
-  eventCardDateSelector: '.event-date',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: '.cky-btn-accept',
-};
-
-const CONFIG_UnionChapel = {
-  venue: 'Union Chapel',
-  eventUrls: ['https://unionchapel.org.uk/whats-on'],
-  eventCardSelector: '.card',
-  eventCardArtistSelector: '.card-inner > p.card-title',
-  eventCardDateSelector: '.card-inner > p > strong',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: '#cookiescript_accept',
-};
-
-const CONFIG_TheShacklewellArms = {
-  venue: 'The Shacklewell Arms',
-  eventUrls: ['https://www.shacklewellarms.com/events'],
-  eventCardSelector: '.dice_events article',
-  eventCardArtistSelector: '.dice_event-title',
-  eventCardDateSelector: 'time',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: '.dice_load-more',
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_HereAtOuternet = {
-  venue: 'HERE at Outernet',
-  eventUrls: ['https://dice.fm/venue/here-at-outernet-wgbx'],
-  eventCardSelector: '[class*=EventParts__EventBlock]',
-  eventCardArtistSelector: '[class*=EventParts__EventName]',
-  eventCardDateSelector: '[class*=EventParts__EventDate]',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: '[class*=idOrSlug__MoreButton]',
-  cookiePolicyModalAcceptButtonSelector: '.ch2-dialog-actions .ch2-btn-primary',
-};
-
-const CONFIG_Troxy = {
-  venue: 'Troxy',
-  eventUrls: ['https://troxy.co.uk/whats-on/'],
-  eventCardSelector: '.events-col',
-  eventCardArtistSelector: 'h3',
-  eventCardDateSelector: '.date-and-title',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_BushHall = {
-  venue: 'Bush Hall',
-  eventUrls: ['https://bushhallmusic.co.uk/pages/whats-on'],
-  eventCardSelector: '.dice-widget article',
-  eventCardArtistSelector: '.dice_event-title',
-  eventCardDateSelector: 'time',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_MothClub = {
-  venue: 'MOTH Club',
-  eventUrls: ['https://mothclub.co.uk/events'],
-  eventCardSelector: '.dice-widget article',
-  eventCardArtistSelector: '.dice_event-title',
-  eventCardDateSelector: 'time',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: '.dice_load-more',
-  cookiePolicyModalAcceptButtonSelector: '.mc-closeModal',
-};
-
-const CONFIG_TheBlackHeart = {
-  venue: 'The Black Heart',
-  eventUrls: ['https://www.ourblackheart.com/events'],
-  eventCardSelector: 'article.eventlist-event',
-  eventCardArtistSelector: 'h1',
-  eventCardDateSelector: '.eventlist-datetag-inner',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_TheWaitingRoom = {
-  venue: 'The Waiting Room',
-  eventUrls: ['https://www.thewaitingroomn16.com/'],
-  eventCardSelector: '.grid-item',
-  eventCardArtistSelector: '.event_title',
-  eventCardDateSelector: '.date_time',
-  eventCardDescriptionSelector: undefined,
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: undefined,
-};
-
-const CONFIG_barbican = {
-  venue: 'barbican',
-  eventUrls: ['https://www.barbican.org.uk/whats-on/contemporary-music'],
-  eventCardSelector: 'article.listing--event',
-  eventCardArtistSelector: '.listing-title--event',
-  eventCardDateSelector: '.listing-date',
-  eventCardDescriptionSelector: '.search-listing__intro div:nth-child(2)',
-  loadMoreButtonSelector: undefined,
-  cookiePolicyModalAcceptButtonSelector: '.cookie-notice .cm-btn-success',
 };
 
 const CONFIG_TheGarage = {
@@ -222,6 +64,23 @@ const CONFIG_ElectricBallroom = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
+const CONFIG_Roundhouse = {
+  venue: 'Roundhouse',
+  eventUrls: ['https://www.roundhouse.org.uk/whats-on/?type=event'],
+  eventCardSelector: '.event-card',
+  eventCardArtistSelector: '.event-card__title',
+  eventCardDateSelector: '.event-card__details',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.button--loadmore',
+  cookiePolicyModalAcceptButtonSelector: '.cookie-policy__popup .button--primary',
+  pageLoadHelper: {
+    type: PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT,
+    options: {
+      selector: '.filters-bar',
+    },
+  },
+};
+
 const CONFIG_EventimApollo = {
   venue: 'Eventim Apollo',
   eventUrls: ['https://www.eventimapollo.com/events',
@@ -253,6 +112,83 @@ const CONFIG_AlexandraPalace = {
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: undefined,
   cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_Omeara = {
+  venue: 'Omeara',
+  eventUrls: ['https://omearalondon.com/events/?event-type=live&currentpage=1'],
+  eventCardSelector: '.events-grid-view__event-card',
+  eventCardArtistSelector: '.event-title',
+  eventCardDateSelector: '.event-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.cky-btn-accept',
+};
+
+const CONFIG_EartH = {
+  venue: 'EartH',
+  eventUrls: ['https://earthackney.co.uk/events/'],
+  eventCardSelector: '.list--events__item',
+  eventCardArtistSelector: '.list--events__item__title',
+  eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
+  eventCardDescriptionSelector: '.list--events__item__description',
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_VillageUnderground = {
+  venue: 'Village Underground',
+  eventUrls: ['https://villageunderground.co.uk/events/'],
+  eventCardSelector: '.list--events__item',
+  eventCardArtistSelector: '.list--events__item__title',
+  eventCardDateSelector: '.list--events__item__dates > time:nth-child(1)',
+  eventCardDescriptionSelector: '.list--events__item__description',
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheO2 = {
+  venue: 'The O2',
+  eventUrls: ['https://www.theo2.co.uk/events/venue/the-o2-arena'],
+  eventCardSelector: '.eventItem',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.date.divider-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '#loadMoreEvents',
+  cookiePolicyModalAcceptButtonSelector: '#onetrust-button-group #onetrust-accept-btn-handler',
+};
+
+const CONFIG_barbican = {
+  venue: 'barbican',
+  eventUrls: ['https://www.barbican.org.uk/whats-on/contemporary-music'],
+  eventCardSelector: 'article.listing--event',
+  eventCardArtistSelector: '.listing-title--event',
+  eventCardDateSelector: '.listing-date',
+  eventCardDescriptionSelector: '.search-listing__intro div:nth-child(2)',
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.cookie-notice .cm-btn-success',
+};
+
+const CONFIG_Troxy = {
+  venue: 'Troxy',
+  eventUrls: ['https://troxy.co.uk/whats-on/'],
+  eventCardSelector: '.events-col',
+  eventCardArtistSelector: 'h3',
+  eventCardDateSelector: '.date-and-title',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_HereAtOuternet = {
+  venue: 'HERE at Outernet',
+  eventUrls: ['https://dice.fm/venue/here-at-outernet-wgbx'],
+  eventCardSelector: '[class*=EventParts__EventBlock]',
+  eventCardArtistSelector: '[class*=EventParts__EventName]',
+  eventCardDateSelector: '[class*=EventParts__EventDate]',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '[class*=idOrSlug__MoreButton]',
+  cookiePolicyModalAcceptButtonSelector: '.ch2-dialog-actions .ch2-btn-primary',
 };
 
 const CONFIG_TheLowerThird = {
@@ -327,6 +263,17 @@ const CONFIG_SouthBankCentre = {
   },
 };
 
+const CONFIG_UnionChapel = {
+  venue: 'Union Chapel',
+  eventUrls: ['https://unionchapel.org.uk/whats-on'],
+  eventCardSelector: '.card',
+  eventCardArtistSelector: '.card-inner > p.card-title',
+  eventCardDateSelector: '.card-inner > p > strong',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '#cookiescript_accept',
+};
+
 const CONFIG_Dingwalls = {
   venue: 'Dingwalls',
   eventUrls: ['https://powerhauscamden.com/whats-on/'],
@@ -347,6 +294,28 @@ const CONFIG_TheUnderworld = {
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: undefined,
   cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_BushHall = {
+  venue: 'Bush Hall',
+  eventUrls: ['https://bushhallmusic.co.uk/pages/whats-on'],
+  eventCardSelector: '.dice-widget article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_MothClub = {
+  venue: 'MOTH Club',
+  eventUrls: ['https://mothclub.co.uk/events'],
+  eventCardSelector: '.dice-widget article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.dice_load-more',
+  cookiePolicyModalAcceptButtonSelector: '.mc-closeModal',
 };
 
 const CONFIG_TheCamdenAssembly = {
@@ -379,6 +348,17 @@ const CONFIG_Colours = {
   eventCardDateSelector: '.tw-date-time',
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: 'span.next a',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheShacklewellArms = {
+  venue: 'The Shacklewell Arms',
+  eventUrls: ['https://www.shacklewellarms.com/events'],
+  eventCardSelector: '.dice_events article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.dice_load-more',
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
@@ -441,6 +421,17 @@ const CONFIG_TheGrace = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
+const CONFIG_TheWaitingRoom = {
+  venue: 'The Waiting Room',
+  eventUrls: ['https://www.thewaitingroomn16.com/'],
+  eventCardSelector: '.grid-item',
+  eventCardArtistSelector: '.event_title',
+  eventCardDateSelector: '.date_time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
 const CONFIG_TheHundredClub = {
   venue: 'The 100 Club',
   eventUrls: ['https://www.the100club.co.uk/events-calendar/'],
@@ -472,6 +463,17 @@ const CONFIG_ElectricBrixton = {
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: '.fl-builder-pagination-load-more a',
   cookiePolicyModalAcceptButtonSelector: '#wt-cli-accept-all-btn',
+};
+
+const CONFIG_TheBlackHeart = {
+  venue: 'The Black Heart',
+  eventUrls: ['https://www.ourblackheart.com/events'],
+  eventCardSelector: 'article.eventlist-event',
+  eventCardArtistSelector: 'h1',
+  eventCardDateSelector: '.eventlist-datetag-inner',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
 const CONFIG_TheSebrightArms = {
@@ -642,7 +644,8 @@ const CONFIG = CONFIG_TheJazzCafe;
       console.log('waiting for the page to load everything new');
       await page.waitForNetworkIdleOptional();
     }
-    console.log(resultsSet, resultsSet.size);
+
+    reportOutput({ resultsSet, size: resultsSet.size });
   }
 
   await browser.close();
