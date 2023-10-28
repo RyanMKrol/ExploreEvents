@@ -6,6 +6,7 @@
 
 import puppeteer from 'puppeteer';
 
+const MAX_MORE_EVENTS_CLICKS = 10;
 const TIMEOUTS = {
   COOKIE_BUTTON_TIMEOUT_WAIT_MS: 3000,
   PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS: 5000,
@@ -473,7 +474,40 @@ const CONFIG_ElectricBrixton = {
   cookiePolicyModalAcceptButtonSelector: '#wt-cli-accept-all-btn',
 };
 
-const CONFIG = CONFIG_TheBlackHeart;
+const CONFIG_TheSebrightArms = {
+  venue: 'The Sebright Arms',
+  eventUrls: ['https://www.sebrightarms.com/'],
+  eventCardSelector: '#dice-event-list-widget article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.dice_load-more',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheSocial = {
+  venue: 'The Social',
+  eventUrls: ['https://www.thesocial.com/events/'],
+  eventCardSelector: '#evcal_list .desc_trig_outter',
+  eventCardArtistSelector: 'span.evcal_event_title',
+  eventCardDateSelector: '.evo_start',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '#evcal_next',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheJazzCafe = {
+  venue: 'The Jazz Cafe',
+  eventUrls: ['https://thejazzcafelondon.com/whats-on/'],
+  eventCardSelector: '#events-list .event',
+  eventCardArtistSelector: 'h2.event-title',
+  eventCardDateSelector: '.event-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: '.overlay-buttons #js-gdpr-accept',
+};
+
+const CONFIG = CONFIG_TheJazzCafe;
 
 // -==============================
 
@@ -530,7 +564,10 @@ const CONFIG = CONFIG_TheBlackHeart;
     await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
     console.log('page load helpers done');
 
-    while (true) {
+    // limit the number of times we can click the "more events" button; some websites will
+    // let you browse years into the future, so we need to stop at some point
+    let moreEventsCount = 0;
+    while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
       console.log('waiting to fetch events from page...');
       const events = await page.$$(CONFIG.eventCardSelector);
       console.log('events have loaded');
@@ -588,6 +625,8 @@ const CONFIG = CONFIG_TheBlackHeart;
         console.log('waiting for network idle');
         await page.waitForNetworkIdleOptional();
         console.log('network idle');
+
+        moreEventsCount += 1;
       } catch (err) {
       // TODO: handle this better by checking the visibility of the button
         console.log(err);
@@ -614,8 +653,13 @@ const CONFIG = CONFIG_TheBlackHeart;
  * @param {object} page The browser page object
  */
 async function setupPage(page) {
-  console.log('maybe aknowledging cookies...');
+  console.log('maybe acknowledging cookies...');
   await maybeAcknowledgeCookieModal(page);
+
+  // we wait here after acking the cookie because some pages will
+  // refresh after clicking it; after refreshing, the DOM won't exist,
+  // so the next step of appending the style will crash the app
+  await pauseBrowser(page, 1000);
 
   // disables smooth scrolling which can intefere with the programatic scrolling this script does
   console.log('disabling smooth scrolling...');
