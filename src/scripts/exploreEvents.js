@@ -146,10 +146,10 @@ const CONFIG_MothClub = {
 
 const CONFIG_TheBlackHeart = {
   venue: 'The Black Heart',
-  eventUrls: ['https://www.ourblackheart.com/upcoming-events'],
-  eventCardSelector: '.summary-item',
-  eventCardArtistSelector: '.summary-title',
-  eventCardDateSelector: '.summary-thumbnail-event-date-inner',
+  eventUrls: ['https://www.ourblackheart.com/events'],
+  eventCardSelector: 'article.eventlist-event',
+  eventCardArtistSelector: 'h1',
+  eventCardDateSelector: '.eventlist-datetag-inner',
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: undefined,
   cookiePolicyModalAcceptButtonSelector: undefined,
@@ -381,14 +381,128 @@ const CONFIG_Colours = {
   cookiePolicyModalAcceptButtonSelector: undefined,
 };
 
-const CONFIG = CONFIG_Colours;
+const CONFIG_NottingHillArtsClub = {
+  venue: 'Notting Hill Arts Club',
+  eventUrls: [
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2023-10',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2023-11',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2023-12',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2024-01',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2024-02',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2024-03',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2024-04',
+    'https://nottinghillartsclub.com/events-list/?filter[month]=2024-05',
+  ],
+  eventCardSelector: '.event',
+  eventCardArtistSelector: '.title',
+  eventCardDateSelector: '.eventlist-datetag-startdate',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_PaperDressVintage = {
+  venue: 'Paper Dress Vintage',
+  eventUrls: ['https://paperdressvintage.co.uk/by-night'],
+  eventCardSelector: '.events__event',
+  eventCardArtistSelector: 'h4',
+  eventCardDateSelector: 'p',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheOldBlueLast = {
+  venue: 'The Old Blue Last',
+  eventUrls: ['https://www.theoldbluelast.com/'],
+  eventCardSelector: '.dice-widget article',
+  eventCardArtistSelector: '.dice_event-title',
+  eventCardDateSelector: 'time',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.dice_load-more',
+  cookiePolicyModalAcceptButtonSelector: undefined,
+  pageLoadHelper: {
+    type: PAGE_LOAD_HELPER_TYPES.CLICK_ELEMENT,
+    options: {
+      selector: '.sqs-popup-overlay-close',
+    },
+  },
+};
+
+const CONFIG_TheGrace = {
+  venue: 'The Grace',
+  eventUrls: ['https://www.thegrace.london/whats-on/'],
+  eventCardSelector: '.card--full',
+  eventCardArtistSelector: '.card__heading',
+  eventCardDateSelector: 'h6',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_TheHundredClub = {
+  venue: 'The 100 Club',
+  eventUrls: ['https://www.the100club.co.uk/events-calendar/'],
+  eventCardSelector: 'div.fc-event-list-content',
+  eventCardArtistSelector: 'h4',
+  eventCardDateSelector: '.fc-event-list-description h5',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_Lafayette = {
+  venue: 'Lafayette',
+  eventUrls: ['https://www.lafayettelondon.com/'],
+  eventCardSelector: 'div.event_listings .polaroid_blocks li',
+  eventCardArtistSelector: 'h1',
+  eventCardDateSelector: '.date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: undefined,
+  cookiePolicyModalAcceptButtonSelector: undefined,
+};
+
+const CONFIG_ElectricBrixton = {
+  venue: 'Electric Brixton',
+  eventUrls: ['https://www.electricbrixton.uk.com/events/'],
+  eventCardSelector: '#whats-on-events .fl-post-column',
+  eventCardArtistSelector: 'h3.event-title',
+  eventCardDateSelector: 'h4.event-date',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.fl-builder-pagination-load-more a',
+  cookiePolicyModalAcceptButtonSelector: '#wt-cli-accept-all-btn',
+};
+
+const CONFIG = CONFIG_TheBlackHeart;
+
+// -==============================
 
 // need a system to grab details from the event page
-// https:// www.academymusicgroup.com/o2shepherdsbushempire/events/all
+// https://www.academymusicgroup.com/o2shepherdsbushempire/events/all
 // https://www.academymusicgroup.com/o2forumkentishtown/events/all
+// https://www.academymusicgroup.com/o2academyislington/events/all
+
+// -==============================
 
 // need a system to get around captcha:
 // https://www.royalalberthall.com/tickets/
+
+// -==============================
+
+// need a way to generate URLs for venues that are a pain with their load more logic
+
+// -==============================
+// need a way to parse the lack of event cards here:
+// https://www.thelexington.co.uk/events.php
+
+// will need to use regex or something
+
+// -==============================
+
+// maybe add some kind of filter - you're currently getting everything
+// for this instead of just gigs:
+
+// https://www.thegrace.london/whats-on/
 
 (async function main() {
   // Launch the browser and open a new blank page
@@ -409,7 +523,7 @@ const CONFIG = CONFIG_Colours;
     console.log('Finished scrolling to the bottom of the page');
 
     console.log('waiting for page to load...');
-    await page.waitForNetworkIdle();
+    await page.waitForNetworkIdleOptional();
     console.log('page has loaded');
 
     console.log('maybe execute page load helpers...');
@@ -466,13 +580,17 @@ const CONFIG = CONFIG_Colours;
 
       console.log('trying to click the load more button');
       try {
+        console.log('clicking');
         await page.click(CONFIG.loadMoreButtonSelector);
-
+        console.log('have clicked');
         // have to wait for the network to idle before scrolling because the "load more" button
         // can occasionally load a new page entirely, which will cause any scrolling to crash
-        await page.waitForNetworkIdle();
+        console.log('waiting for network idle');
+        await page.waitForNetworkIdleOptional();
+        console.log('network idle');
       } catch (err) {
       // TODO: handle this better by checking the visibility of the button
+        console.log(err);
         console.log("the load more button likely wasn't visible, so this failed");
         break;
       }
@@ -483,7 +601,7 @@ const CONFIG = CONFIG_Colours;
 
       // wait for the new events to load after loading more
       console.log('waiting for the page to load everything new');
-      await page.waitForNetworkIdle();
+      await page.waitForNetworkIdleOptional();
     }
     console.log(resultsSet, resultsSet.size);
   }
@@ -651,13 +769,23 @@ async function createBrowserAndPage() {
   await page.setViewport({ width: 1080, height: 1024 });
 
   // create a method to wait for optional elements
-  page.waitForSelectorOptional = async function waitForSelectorOptional(selector, timeout) {
+  page.waitForSelectorOptional = async function waitForSelectorOptional(selector, timeoutMs) {
     const element = await Promise.race([
       this.waitForSelector(selector, { timeout: 0 }),
-      new Promise((resolve) => { setTimeout(() => resolve(), timeout); }),
+      new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
     ]);
 
     return element;
+  };
+
+  // generally we don't need the network to actually idle, 15s is usually more than enough,
+  // but if the network idle's before then, we can go even faster!
+  // Note: in most cases, the network will idle before the 15s timeout
+  page.waitForNetworkIdleOptional = async function waitForNetworkIdleOptional(timeoutMs = 15000) {
+    await Promise.race([
+      this.waitForNetworkIdle(),
+      new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
+    ]);
   };
 
   return { browser, page };
