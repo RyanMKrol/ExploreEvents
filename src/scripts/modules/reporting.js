@@ -16,7 +16,6 @@ function printManualCheckReminders() {
     'https://www.academymusicgroup.com/o2forumkentishtown/events/all',
     'https://www.academymusicgroup.com/o2academyislington/events/all',
     'https://www.corsicastudios.com/calendar/corsica-studios',
-    'https://www.royalalberthall.com/tickets/',
     'https://www.thelexington.co.uk/events.php',
     'https://drumshedslondon.com/whats-on/',
   ];

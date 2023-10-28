@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-underscore-dangle */
 
 /* eslint-disable no-await-in-loop */
 /* eslint-disable camelcase */
@@ -6,20 +7,22 @@
 
 import fs from 'fs-extra';
 
-import TOTAL_CONFIG from './modules/config';
+import ALL_CONFIGS from './modules/config';
 import PAGE_LOAD_HELPER_TYPES from './modules/constants';
 import {
   clickElement,
   createBrowserAndPage,
   removeElement,
   scrollToBottomUntilNoMoreChanges,
+  waitForManualUpdate,
 } from './modules/puppeteer';
 
 const OUTPUT_FILE_LOC = `${process.cwd()}/output/progress.txt`;
-
 const MAX_MORE_EVENTS_CLICKS = 10;
+
 const TIMEOUTS = {
   COOKIE_BUTTON_TIMEOUT_WAIT_MS: 3000,
+  POST_COOKIE_BUTTON_CLICK_WAIT_MS: 3000,
   PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS: 5000,
 };
 
@@ -52,17 +55,17 @@ const TIMEOUTS = {
 
 // https://www.thegrace.london/whats-on/
 
-// ================================
-
-// write progress to a file so that you can try again if something
-// crashes and not have to go through the entire thing
-
 let CONFIG;
 
+// Define a pause function
+/**
+ *
+ * @param page
+ */
 (async function main() {
   const rawPreviousResults = await loadCurrentProgress();
   const results = await removeEmptyResults(rawPreviousResults);
-  const venuesToProcess = await loadVenuesToProcess(results);
+  const venuesToProcess = await loadVenuesToProcess(results, ALL_CONFIGS);
 
   // Launch the browser and open a new blank page
   const { browser, page } = await createBrowserAndPage();
@@ -96,6 +99,17 @@ let CONFIG;
       console.log('maybe execute page load helpers...');
       await maybeExecutePageLoadHelpers(page, CONFIG.pageLoadHelper);
       console.log('page load helpers done');
+
+      console.log('setting up page again... ');
+      await setupPage(page);
+
+      console.log('Scrolling to the bottom of this page...');
+      await scrollToBottomUntilNoMoreChanges(page);
+      console.log('Finished scrolling to the bottom of the page');
+
+      console.log('waiting for page to load...');
+      await page.waitForNetworkIdleOptional();
+      console.log('page has loaded');
 
       // limit the number of times we can click the "more events" button; some websites will
       // let you browse years into the future, so we need to stop at some point
@@ -153,6 +167,7 @@ let CONFIG;
           console.log('clicking');
           await page.click(CONFIG.loadMoreButtonSelector);
           console.log('have clicked');
+
           // have to wait for the network to idle before scrolling because the "load more" button
           // can occasionally load a new page entirely, which will cause any scrolling to crash
           console.log('waiting for network idle');
@@ -179,8 +194,6 @@ let CONFIG;
 
     const resultString = JSON.stringify(Array.from(resultsSet));
     console.log(resultString);
-
-    // writeOrAppendToFile;
 
     results[CONFIG.venue] = Array.from(resultsSet);
 
@@ -226,16 +239,7 @@ async function maybeAcknowledgeCookieModal(page) {
   // we wait here after acking the cookie because some pages will
   // refresh after clicking it; after refreshing, the DOM won't exist,
   // so the next step of appending the style will crash the app
-  await pauseBrowser(page, 3000);
-}
-
-/**
- * Pauses all browser execution for the time specified
- * @param {object} page The browser page object
- * @param {number} timeMs How many ms to pause for
- */
-async function pauseBrowser(page, timeMs) {
-  await page.waitForTimeout(timeMs);
+  await page.waitForTimeout(TIMEOUTS.POST_COOKIE_BUTTON_CLICK_WAIT_MS);
 }
 
 /**
@@ -260,6 +264,11 @@ async function maybeExecutePageLoadHelpers(page, helperConfig) {
         page,
         helperConfig.options.selector,
         TIMEOUTS.PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS,
+      );
+      break;
+    case PAGE_LOAD_HELPER_TYPES.MANUAL_INTERACTION:
+      await waitForManualUpdate(
+        page,
       );
       break;
     default:
@@ -301,12 +310,13 @@ async function removeEmptyResults(data) {
  * have already been processed
  * @param {object} currentProgressResults A blob representing venues that
  * have already been processed
+ * @param {object} configs All of the configs that _could_ be tracked by this script
  * @returns {object} The config that will be processed by our script
  */
-async function loadVenuesToProcess(currentProgressResults) {
+async function loadVenuesToProcess(currentProgressResults, configs) {
   const alreadyProcessedVenues = Object.keys(currentProgressResults);
 
-  const venuesToProcess = TOTAL_CONFIG.reduce((acc, config) => {
+  const venuesToProcess = configs.reduce((acc, config) => {
     if (!alreadyProcessedVenues.includes(config.venue)) {
       acc.push(config);
     }

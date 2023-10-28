@@ -447,6 +447,20 @@ const CONFIG = [{
   eventCardDescriptionSelector: undefined,
   loadMoreButtonSelector: undefined,
   cookiePolicyModalAcceptButtonSelector: '.overlay-buttons #js-gdpr-accept',
-}];
+},
+{
+  venue: 'Royal Albert Hall',
+  eventUrls: ['https://www.royalalberthall.com/tickets/'],
+  eventCardSelector: '.area-production-list article',
+  eventCardArtistSelector: 'h3.title',
+  eventCardDateSelector: '.date-description',
+  eventCardDescriptionSelector: undefined,
+  loadMoreButtonSelector: '.unit-pagination-loader a',
+  cookiePolicyModalAcceptButtonSelector: 'button#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll',
+  pageLoadHelper: {
+    type: PAGE_LOAD_HELPER_TYPES.MANUAL_INTERACTION,
+  },
+},
+];
 
 export default CONFIG;

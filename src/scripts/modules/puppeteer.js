@@ -7,7 +7,7 @@ import puppeteer from 'puppeteer';
  * @returns {object} An object containing a browser and page
  */
 async function createBrowserAndPage() {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: false, devtools: true });
   const page = await browser.newPage();
 
   // Set screen size
@@ -31,6 +31,23 @@ async function createBrowserAndPage() {
       this.waitForNetworkIdle(),
       new Promise((resolve) => { setTimeout(() => resolve(), timeoutMs); }),
     ]);
+  };
+
+  // method to pause execution of the script until the user manually unsets the isPaused variable
+  page.pause = async function pause() {
+    await page.evaluate(() => {
+      window.isPaused = true;
+    });
+
+    // Log a message to indicate that the script is paused
+    console.log('Script is paused. Set window.isPaused = false in the browser console to resume.');
+
+    // Wait for the global variable to be set to false
+    await page.waitForFunction(() => !window.isPaused);
+
+    // in cases where this manual pause is needed, the page can often
+    // redirect, so we need to wait for that DOM to load to continue
+    await page.waitForTimeout(3000);
   };
 
   return { browser, page };
@@ -63,6 +80,14 @@ async function clickElement(page, selector, timeout) {
   );
 
   await element?.evaluate((el) => el.click());
+}
+
+/**
+ * Pauses the script execution until the user manually unsets the isPaused variable
+ * @param {object} page The browser page object
+ */
+async function waitForManualUpdate(page) {
+  await page.pause();
 }
 
 /**
@@ -120,4 +145,5 @@ export {
   createBrowserAndPage,
   removeElement,
   scrollToBottomUntilNoMoreChanges,
+  waitForManualUpdate,
 };
