@@ -1,4 +1,8 @@
 /**
+ * Module deals with generating a report with the results set
+ */
+
+/**
  * Produces pretty text from the website's raw data
  * @param {object} data Raw data from the site scraper
  */

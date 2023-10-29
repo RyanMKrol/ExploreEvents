@@ -1,7 +1,11 @@
+/**
+ * Module deals with scraping the underlying sites to grab data
+ */
+
 /* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
 
-import VENUES_CONFIG from '../../utils/config';
+import { VENUE_CRAWLING_CONFIG } from '../../utils/config';
 import PAGE_LOAD_HELPER_TYPES from '../../utils/constants';
 
 import {
@@ -55,7 +59,7 @@ async function scrapeVenues() {
   console.log(results);
 
   // using the previous results, remove any venues that have already processed from this run
-  const venuesToProcess = await loadVenuesToProcess(results, VENUES_CONFIG);
+  const venuesToProcess = await loadVenuesToProcess(results, VENUE_CRAWLING_CONFIG);
 
   const { browser, page } = await createBrowserAndPage();
 

@@ -1,6 +1,6 @@
 import PAGE_LOAD_HELPER_TYPES from './constants';
 
-const VENUES_CONFIG = [
+const VENUE_CRAWLING_CONFIG = [
   {
     venue: 'The Garage',
     eventUrls: ['https://www.thegarage.london/live/'],
@@ -497,4 +497,142 @@ const VENUES_CONFIG = [
   },
 ];
 
-export default VENUES_CONFIG;
+const VENUE_RESULTS_PARSING_CONFIG = [
+  {
+    venue: 'The Garage',
+  },
+  {
+    venue: 'Scala',
+  },
+  {
+    venue: 'KOKO',
+  },
+  {
+    venue: 'Electric Ballroom',
+  },
+  {
+    venue: 'Roundhouse',
+  },
+  {
+    venue: 'Eventim Apollo',
+  },
+  {
+    venue: 'Alexandra Palace',
+  },
+  {
+    venue: 'Omeara',
+  },
+  {
+    venue: 'EartH',
+  },
+  {
+    venue: 'Village Underground',
+  },
+  {
+    venue: 'The O2',
+  },
+  {
+    venue: 'barbican',
+  },
+  {
+    venue: 'Troxy',
+  },
+  {
+    venue: 'HERE at Outernet',
+  },
+  {
+    venue: 'The Lower Third',
+  },
+  {
+    venue: 'Islington Assembly Hall',
+  },
+  {
+    venue: 'The Dome',
+  },
+  {
+    venue: 'Wembley Stadium',
+  },
+  {
+    venue: 'Ovo Arena',
+  },
+  {
+    venue: 'South Bank Centre',
+  },
+  {
+    venue: 'Union Chapel',
+  },
+  {
+    venue: 'Dingwalls',
+  },
+  {
+    venue: 'The Underworld',
+  },
+  {
+    venue: 'Bush Hall',
+  },
+  {
+    venue: 'MOTH Club',
+  },
+  {
+    venue: 'The Camden Assembly',
+  },
+  {
+    venue: 'OSLO',
+  },
+  {
+    venue: 'Colours',
+  },
+  {
+    venue: 'The Shacklewell Arms',
+  },
+  {
+    venue: 'Notting Hill Arts Club',
+  },
+  {
+    venue: 'Paper Dress Vintage',
+  },
+  {
+    venue: 'The Old Blue Last',
+  },
+  {
+    venue: 'The Grace',
+  },
+  {
+    venue: 'The Waiting Room',
+  },
+  {
+    venue: 'The 100 Club',
+  },
+  {
+    venue: 'Lafayette',
+  },
+  {
+    venue: 'Electric Brixton',
+  },
+  {
+    venue: 'The Black Heart',
+  },
+  {
+    venue: 'The Sebright Arms',
+  },
+  {
+    venue: 'The Social',
+  },
+  {
+    venue: 'The Jazz Cafe',
+  },
+  {
+    venue: "O2 Empire Shepherd's Bush",
+  },
+  {
+    venue: 'O2 Forum Kentish Town',
+  },
+  {
+    venue: 'O2 Academy Islington',
+  },
+  {
+    venue: 'Royal Albert Hall',
+  },
+];
+
+export { VENUE_CRAWLING_CONFIG, VENUE_RESULTS_PARSING_CONFIG };

@@ -1,6 +1,10 @@
+/**
+ * Module deals with checking if the script ran correctly or not
+ */
+
 import fs from 'fs-extra';
 
-import VENUES_CONFIG from '../../utils/config';
+import { VENUE_CRAWLING_CONFIG } from '../../utils/config';
 import sortDates from '../../utils/sort';
 
 const METRICS_OUTPUT_FILE_LOC = `${process.cwd()}/output/resultsMetricsHistory.json`;
@@ -148,7 +152,7 @@ function getEntriesWithNoData(results) {
  * @returns {Array<string>} Venue names that are missing from the result set
  */
 function getMissingEntriesFromResults(results) {
-  return VENUES_CONFIG.map((x) => x.venue)
+  return VENUE_CRAWLING_CONFIG.map((x) => x.venue)
     .filter((targetVenueKey) => !Object.keys(results).includes(targetVenueKey));
 }
 
