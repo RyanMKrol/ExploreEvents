@@ -148,7 +148,7 @@ async function selectMonthAndYear(page, datePickerElement, date) {
   await page.select(SELECTORS.DATE_PICKER_SELECT_YEAR, `${year}`);
   await page.select(SELECTORS.DATE_PICKER_SELECT_MONTH, `${month}`);
 
-  const dayElement = await page.$x(`//a[text()='${day}']`);
+  const dayElement = await page.$x(`.//*[contains(@class, 'ui-datepicker-calendar')]//a[text()='${day}']`);
 
   if (dayElement.length !== 1) {
     throw new Error("Couldn't find day selector");
