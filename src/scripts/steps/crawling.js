@@ -6,7 +6,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { VENUE_CRAWLING_CONFIG } from '../../utils/config';
-import PAGE_LOAD_HELPER_TYPES from '../../utils/constants';
+import { PAGE_LOAD_HELPER_TYPES } from '../../utils/constants';
 
 import {
   clickElement,
@@ -42,12 +42,6 @@ const TIMEOUTS = {
 
 // https://www.thegrace.london/whats-on/
 
-// ===================================
-
-// i need to know when this isn't working, so i should store some kind of file
-// that tracks previous numbers, and then compares new resuls to that - if they change
-// drastically, our page is broken
-
 /**
  * Run the script
  * @returns {object} A big blob of results for each venue
@@ -56,7 +50,6 @@ async function scrapeVenues() {
   // load any progress made by a previous run of this script (delete the
   // progress.txt file if you'd like to start from scratch)
   const results = await readProgressFile();
-  console.log(results);
 
   // using the previous results, remove any venues that have already processed from this run
   const venuesToProcess = await loadVenuesToProcess(results, VENUE_CRAWLING_CONFIG);
@@ -104,7 +97,7 @@ async function scrapeVenues() {
       }
     }
 
-    results[jobConfig.venue] = Array.from(resultsSet);
+    results[jobConfig.venue] = convertResultSetToRawJson(resultsSet);
 
     await writeProgressFile(results);
   }
@@ -112,6 +105,17 @@ async function scrapeVenues() {
   await browser.close();
 
   return results;
+}
+
+/**
+ * We store a string in the set to utilise the dedupe logic, but we
+ * need to convert back to JSON when storing to a file for ease of
+ * processing later
+ * @param {Set<string>} resultsSet Set of result string objects which look like - { artist, date }
+ * @returns {Array<JSON>} A results set of parsed JSON
+ */
+function convertResultSetToRawJson(resultsSet) {
+  return Array.from(resultsSet).map((result) => JSON.parse(result));
 }
 
 /**
@@ -184,19 +188,25 @@ async function processInPageEvents(jobConfig, events, resultsSet) {
         (result) => result.textContent.trim(),
       );
 
-      const date = await event.$eval(
+      const rawDate = await event.$eval(
         jobConfig.eventCardDateSelector,
         (result) => result.textContent.trim(),
       );
+
+      const dateWithoutSeparators = rawDate.replaceAll('.', ' ').replaceAll(' / ', ' ').replaceAll(',', ' ');
+
+      const date = dateWithoutSeparators.replace(/\s+/g, ' ');
 
       const description = jobConfig.eventCardDescriptionSelector ? await event.$eval(
         jobConfig.eventCardDescriptionSelector,
         (result) => result.textContent.trim(),
       ) : undefined;
 
-      console.log('Result: ', JSON.stringify({ artist, date, description }));
+      const item = JSON.stringify({ artist, date, description });
 
-      resultsSet.add(JSON.stringify({ artist, date, description }));
+      console.log('Result:', item);
+
+      resultsSet.add(item);
     } catch (error) {
       // TODO: Start tracking how many times we fail, and do
       // something when that number is too high

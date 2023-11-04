@@ -1,4 +1,6 @@
-import PAGE_LOAD_HELPER_TYPES from './constants';
+/* eslint-disable no-unused-vars */
+
+import { PAGE_LOAD_HELPER_TYPES } from './constants';
 
 const VENUE_CRAWLING_CONFIG = [
   {
@@ -364,7 +366,7 @@ const VENUE_CRAWLING_CONFIG = [
     eventUrls: ['https://www.thegrace.london/whats-on/'],
     eventCardSelector: '.card--full',
     eventCardArtistSelector: '.card__heading',
-    eventCardDateSelector: 'h6',
+    eventCardDateSelector: 'h6.card__strip-heading--last',
     eventCardDescriptionSelector: undefined,
     loadMoreButtonSelector: undefined,
     cookiePolicyModalAcceptButtonSelector: undefined,
@@ -412,7 +414,7 @@ const VENUE_CRAWLING_CONFIG = [
   {
     venue: 'The Black Heart',
     eventUrls: ['https://www.ourblackheart.com/events'],
-    eventCardSelector: 'article.eventlist-event',
+    eventCardSelector: 'article.eventlist-event--upcoming',
     eventCardArtistSelector: 'h1',
     eventCardDateSelector: '.eventlist-datetag-inner',
     eventCardDescriptionSelector: undefined,
@@ -449,39 +451,39 @@ const VENUE_CRAWLING_CONFIG = [
     loadMoreButtonSelector: undefined,
     cookiePolicyModalAcceptButtonSelector: '.overlay-buttons #js-gdpr-accept',
   },
-  // {
-  //   venue: "O2 Empire Shepherd's Bush",
-  //   eventUrls: ['https://www.academymusicgroup.com/o2shepherdsbushempire/events/all'],
-  //   eventCardSelector: 'div.item-list li',
-  //   alternateProcessingConfig: {
-  //     newTabLinkSelector: '.event-actions a',
-  //   },
-  //   eventCardArtistSelector: '.event-details h1',
-  //   eventCardDateSelector: '.event-info p',
-  //   cookiePolicyModalAcceptButtonSelector: undefined,
-  // },
-  // {
-  //   venue: 'O2 Forum Kentish Town',
-  //   eventUrls: ['https://www.academymusicgroup.com/o2forumkentishtown/events/all'],
-  //   eventCardSelector: 'div.item-list li',
-  //   alternateProcessingConfig: {
-  //     newTabLinkSelector: '.event-actions a',
-  //   },
-  //   eventCardArtistSelector: '.event-details h1',
-  //   eventCardDateSelector: '.event-info p',
-  //   cookiePolicyModalAcceptButtonSelector: undefined,
-  // },
-  // {
-  //   venue: 'O2 Academy Islington',
-  //   eventUrls: ['https://www.academymusicgroup.com/o2academyislington/events/all'],
-  //   eventCardSelector: 'div.item-list li',
-  //   alternateProcessingConfig: {
-  //     newTabLinkSelector: '.event-actions a',
-  //   },
-  //   eventCardArtistSelector: '.event-details h1',
-  //   eventCardDateSelector: '.event-info p',
-  //   cookiePolicyModalAcceptButtonSelector: undefined,
-  // },
+  {
+    venue: "O2 Empire Shepherd's Bush",
+    eventUrls: ['https://www.academymusicgroup.com/o2shepherdsbushempire/events/all'],
+    eventCardSelector: 'div.item-list li',
+    alternateProcessingConfig: {
+      newTabLinkSelector: '.event-actions a',
+    },
+    eventCardArtistSelector: '.event-details h1',
+    eventCardDateSelector: '.event-info p',
+    cookiePolicyModalAcceptButtonSelector: undefined,
+  },
+  {
+    venue: 'O2 Forum Kentish Town',
+    eventUrls: ['https://www.academymusicgroup.com/o2forumkentishtown/events/all'],
+    eventCardSelector: 'div.item-list li',
+    alternateProcessingConfig: {
+      newTabLinkSelector: '.event-actions a',
+    },
+    eventCardArtistSelector: '.event-details h1',
+    eventCardDateSelector: '.event-info p',
+    cookiePolicyModalAcceptButtonSelector: undefined,
+  },
+  {
+    venue: 'O2 Academy Islington',
+    eventUrls: ['https://www.academymusicgroup.com/o2academyislington/events/all'],
+    eventCardSelector: 'div.item-list li',
+    alternateProcessingConfig: {
+      newTabLinkSelector: '.event-actions a',
+    },
+    eventCardArtistSelector: '.event-details h1',
+    eventCardDateSelector: '.event-info p',
+    cookiePolicyModalAcceptButtonSelector: undefined,
+  },
   {
     venue: 'Royal Albert Hall',
     eventUrls: ['https://www.royalalberthall.com/tickets/'],
@@ -500,138 +502,228 @@ const VENUE_CRAWLING_CONFIG = [
 const VENUE_RESULTS_PARSING_CONFIG = [
   {
     venue: 'The Garage',
+    validationRegex: [/.*(?<day>\d{2}) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Scala',
+    validationRegex: [/(?<day>\d+)\w{2} (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'KOKO',
+    validationRegex: [/.*(?<day>\d{2}) (?<month>\w{3}).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Electric Ballroom',
+    validationRegex: [/.* (?<day>\d+)\w{2} (?<month>\w{3}).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Roundhouse',
+    validationRegex: [/[^ ]+ (?<day>\d{2}) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Eventim Apollo',
+    validationRegex: [/(?<month>\b\w+\b) (?<day>\d+)[^ ]+.*/, /[^ ]+ (?<day>\d+)[^ ]+ (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Alexandra Palace',
+    validationRegex: [/(?<day>\d+) .*(?<month>\b\w{3}\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Omeara',
+    validationRegex: [/.*(?<day>\d{2}) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'EartH',
+    validationRegex: [/\w (?<month>\w{3}).* (?<day>\d+) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Village Underground',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The O2',
+    validationRegex: [/(?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'barbican',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Troxy',
+    validationRegex: [/(?<month>\w+) (?<day>\d+).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'HERE at Outernet',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Lower Third',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Islington Assembly Hall',
+    validationRegex: [/\w{3}(?<day>\d{2})(?<month>\w+)/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Dome',
+    validationRegex: [/.* (?<month>\b\w+\b) (?<day>\d+) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Wembley Stadium',
+    validationRegex: [/(?<day>\d+) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Ovo Arena',
+    validationRegex: [/(?<day>\d{2}) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'South Bank Centre',
+    validationRegex: [/\w* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Union Chapel',
+    validationRegex: [/[^ ]* (?<day>\d+) (?<month>\w+) (?<year>\d+)/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Dingwalls',
+    validationRegex: [/.* (?<day>\d+)[^ ]* (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Underworld',
+    validationRegex: [/[^ ]* (?<day>\d+)[^ ]* (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Bush Hall',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'MOTH Club',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Camden Assembly',
+    validationRegex: [/[^ ]* (?<day>\d+)[^ ]* (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'OSLO',
+    validationRegex: [/.*(?<day>\d{2}) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Colours',
+    validationRegex: [/(?<month>\b\w+\b) (?<day>\d+) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Shacklewell Arms',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Notting Hill Arts Club',
+    validationRegex: [/.*(?<day>\d{2}) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Paper Dress Vintage',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b)/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Old Blue Last',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Grace',
+    validationRegex: [/.* (?<day>\d{2}) (?<month>\b\w+\b).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Waiting Room',
+    validationRegex: [/.* (?<month>\b\w+\b) (?<day>\d{2}) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The 100 Club',
+    validationRegex: [/[^ ]* (?<day>\d+)[^ ]* (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Lafayette',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Electric Brixton',
+    validationRegex: [/(?<day>\d+).* (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Black Heart',
+    validationRegex: [/(?<month>\b\w+\b) (?<day>\d+) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Sebright Arms',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Social',
+    validationRegex: [/\w{3}(?<day>\d{2})(?<month>\w{3}).*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'The Jazz Cafe',
+    validationRegex: [/\w{3}(?<day>\d{2})(?<month>\w+)/],
+    removeRangedEvents: false,
   },
   {
     venue: "O2 Empire Shepherd's Bush",
+    validationRegex: [/\w (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'O2 Forum Kentish Town',
+    validationRegex: [/\w (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'O2 Academy Islington',
+    validationRegex: [/\w (?<day>\d+) (?<month>\b\w+\b) .*/],
+    removeRangedEvents: false,
   },
   {
     venue: 'Royal Albert Hall',
+    validationRegex: [/.* (?<day>\d+) (?<month>\b\w+\b) 20.*/],
+    removeRangedEvents: true,
   },
 ];
 

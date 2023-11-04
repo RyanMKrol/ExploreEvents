@@ -5,7 +5,7 @@
 
 import fs from 'fs-extra';
 
-const OUTPUT_FILE_LOC = `${process.cwd()}/output/progress.txt`;
+const OUTPUT_FILE_LOC = `${process.cwd()}/output/progress.json`;
 
 /**
  * Read progress file
@@ -59,7 +59,7 @@ async function readProgressFile() {
  * }
  */
 async function writeProgressFile(data) {
-  await fs.outputFile(OUTPUT_FILE_LOC, JSON.stringify(data, null, 2));
+  fs.writeJSONSync(OUTPUT_FILE_LOC, data, { spaces: 2 });
 }
 
 export {
