@@ -34,7 +34,7 @@ const TIMEOUTS = {
 /**
  * Scrape the list of concerts for a given date
  * @param {string} date The date to grab the concerts for
- * @returns {object} A big blob of concert data
+ * @returns {Array<object>} Looks like [{artist, venue}, ...]
  */
 async function scrapeConcertList(date) {
   const { browser, page } = await createBrowserAndPage();

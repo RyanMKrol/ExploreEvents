@@ -1,26 +1,33 @@
 #!/usr/bin/env node
 
+/* eslint-disable */
+
 import scrapeConcertList from './steps/crawling';
 import filterDate from './steps/filter';
+import createReportFile from './steps/report';
 
 /**
  * Run the script
  */
 (async function main() {
   const dates = [
-    new Date('December 06 2023'),
+    new Date('December 05 2023'),
   ];
 
   const results = await dates.reduce(async (acc, date) => {
     const localAcc = await acc;
 
     const resultForDate = await scrapeConcertList(date);
-    localAcc[date.toLocaleDateString('en-GB')] = resultForDate;
+    localAcc.push({
+      date: date.toLocaleDateString('en-GB'),
+      events: resultForDate
+    })
 
     return localAcc;
-  }, Promise.resolve({}));
+  }, Promise.resolve([]));
+
 
   const filteredResults = filterDate(results);
 
-  console.log(filteredResults);
+  createReportFile({results: filteredResults});
 }());

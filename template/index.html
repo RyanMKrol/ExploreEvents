@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+
+        <style>
+        * {
+            font-family: 'Rubik', sans-serif;
+        }
+        details {
+            background-color: #f9f9f9;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        summary {
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .location {
+            font-size: 14px;
+            color: #b8b8b8;
+        }
+
+        .entry {
+            margin: 8px;
+        }
+        </style>
+    </head>
+    <body>
+    {{#each results}}
+        <details>
+        <summary>{{date}}</summary>
+        {{#each events}}
+            <p class="entry">{{artist}}<br/><span class="location">{{venue}}</span></p>
+        {{/each}}
+        </details>
+    {{/each}}
+    </body>
+</html>
