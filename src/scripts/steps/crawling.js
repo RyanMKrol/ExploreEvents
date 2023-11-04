@@ -2,9 +2,7 @@
  * Module deals with scraping the underlying sites to grab data
  */
 
-/* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
-/* eslint-disable no-unused-vars */
 
 import {
   createBrowserAndPage,
@@ -12,6 +10,7 @@ import {
 } from '../../utils/puppeteer';
 
 const MAX_MORE_EVENTS_CLICKS = 10;
+
 const LONDON_CONCERTS_PAGE = 'https://www.songkick.com/metro-areas/24426-uk-london';
 
 const SELECTORS = {
@@ -19,9 +18,11 @@ const SELECTORS = {
   DATE_PICKER_SELECT_YEAR: '.ui-datepicker-year',
   DATE_PICKER_SELECT_MONTH: '.ui-datepicker-month',
   DATE_PICKER_SUBMIT: '.datepicker-submit',
-  LOAD_MORE_BUTTON: '.next_page:not(.disabled)',
-  EVENT_LIST_CONTAINER: '.metro-area-calendar-listings',
+  EVENT_CONTAINERS: 'li.event-listings-element',
+  EVENT_CONTAINERS_ARTISTS: 'p.artists strong',
+  EVENT_CONTAINERS_LOCATION: 'p.location',
   ACCEPT_COOKIES_BUTTON: '#onetrust-accept-btn-handler',
+  LOAD_MORE_BUTTON: '.next_page:not(.disabled)',
 };
 
 const TIMEOUTS = {
@@ -36,7 +37,7 @@ const TIMEOUTS = {
  * @returns {object} A big blob of concert data
  */
 async function scrapeConcertList(date) {
-  const { browser, page } = await createBrowserAndPage();
+  const { page } = await createBrowserAndPage();
 
   // Navigate the page to a URL
   await page.goto(LONDON_CONCERTS_PAGE);
@@ -50,19 +51,19 @@ async function scrapeConcertList(date) {
   console.log('Setting up the date ranges');
   await setupPagesDateRange(page, date);
 
-  // limit the number of times we can click the "more events" button; some websites will
-  // let you browse years into the future, so we need to stop at some point
+  let results = [];
   let moreEventsCount = 0;
 
-  console.log('Parsing events');
   while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
     console.log('Setting up page... ');
     await setupPage(page);
 
     console.log('Fetching events from page...');
-    const events = await page.$$(SELECTORS.EVENT_LIST_CONTAINER);
+    const eventElements = await page.$$(SELECTORS.EVENT_CONTAINERS);
 
-    // grab the results
+    const parsedEvents = await parseEvents(eventElements);
+
+    results = [...results, ...parsedEvents];
 
     const hasLoadedMore = await maybeLoadMore(page);
     if (hasLoadedMore) {
@@ -71,12 +72,40 @@ async function scrapeConcertList(date) {
       break;
     }
   }
+
+  return results;
 }
 
 /**
- *
- * @param page
- * @param date
+ * Pull the event information from our list of event elements on the page
+ * @param {Array<object>} eventSelectors Event DOM handles
+ * @returns {Array<object>} Array of {artist, venue}
+ */
+function parseEvents(eventSelectors) {
+  return eventSelectors.reduce(async (acc, event) => {
+    const localAccumulator = await acc;
+    const artist = await event.$eval(
+      SELECTORS.EVENT_CONTAINERS_ARTISTS,
+      (result) => result.textContent.trim(),
+    );
+
+    const plaintextVenue = await event.$eval(
+      SELECTORS.EVENT_CONTAINERS_LOCATION,
+      (result) => result.textContent.trim(),
+    );
+
+    const venue = plaintextVenue.replace(/\s+/g, ' ');
+
+    localAccumulator.push({ artist, venue });
+
+    return localAccumulator;
+  }, Promise.resolve([]));
+}
+
+/**
+ * Sets up the page with the date we want to pull information for
+ * @param {any} page Puppeteer page object
+ * @param {Date} date The date to set the page up for
  */
 async function setupPagesDateRange(page, date) {
   // select date pickers
@@ -103,10 +132,10 @@ async function setupPagesDateRange(page, date) {
 }
 
 /**
- *
- * @param datePickerElement
- * @param page
- * @param date
+ * Selects the month and year on the date picker element
+ * @param {any} page Puppeteer page object
+ * @param {object} datePickerElement The element to click to load the date picker
+ * @param {Date} date the date to select in the pickers
  */
 async function selectMonthAndYear(page, datePickerElement, date) {
   await datePickerElement.click();
@@ -130,7 +159,7 @@ async function selectMonthAndYear(page, datePickerElement, date) {
 
 /**
  * Acknowledges a cookie modal if one is present
- * @param {object} page The browser page object
+ * @param {any} page Puppeteer page object
  */
 async function maybeAcknowledgeCookieModal(page) {
   const element = await page.waitForSelectorOptional(
@@ -146,7 +175,7 @@ async function maybeAcknowledgeCookieModal(page) {
 
 /**
  * Attempts to load more content on to the page
- * @param {object} page The browser's page object
+ * @param {any} page Puppeteer page object
  * @returns {boolean} Whether more content was loaded
  */
 async function maybeLoadMore(page) {
@@ -179,7 +208,7 @@ async function maybeLoadMore(page) {
 
 /**
  * Sets up the page to be ready for scraping
- * @param {object} page The browser page object
+ * @param {any} page Puppeteer page object
  */
 async function setupPage(page) {
   // disables smooth scrolling which can intefere with the programatic scrolling this script does
