@@ -1,6 +1,6 @@
 {
   "name": "event-explorer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "type": "module",
   "//": "experimental-specifier-resolution=node allows me to not have to specify .../index.js in my imports",
@@ -26,7 +26,6 @@
     "eslint-plugin-jsdoc": "^46.4.6"
   },
   "dependencies": {
-    "fs-extra": "^11.1.1",
     "puppeteer": "^21.4.0"
   }
 }

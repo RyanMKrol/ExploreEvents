@@ -71,43 +71,6 @@ async function createBrowserAndPage() {
 }
 
 /**
- * Removes an element from the page using a selector
- * @param {object} page The browser page object
- * @param {string} selector String to access the item you want to remove
- */
-async function removeElement(page, selector) {
-  await page.evaluate((x) => {
-    const element = document.querySelector(x);
-    if (element) {
-      element.parentNode.removeChild(element);
-    }
-  }, selector);
-}
-
-/**
- * Dismisses an element from the page using a selector
- * @param {object} page The browser page object
- * @param {string} selector String to access the item you want to dismiss
- * @param {number} timeout How long to wait before moving on
- */
-async function clickElement(page, selector, timeout) {
-  const element = await page.waitForSelectorOptional(
-    selector,
-    timeout,
-  );
-
-  await element?.evaluate((el) => el.click());
-}
-
-/**
- * Pauses the script execution until the user manually unsets the isPaused variable
- * @param {object} page The browser page object
- */
-async function waitForManualUpdate(page) {
-  await page.pause();
-}
-
-/**
  * Keeps scrolling to the bottom of the page until we're unable to scroll anymore
  * @param {object} page The browser page object
  */
@@ -130,10 +93,6 @@ async function scrollToBottomUntilNoMoreChanges(page) {
       retries += 1;
     }
   }
-
-  // once we've finished scrolling, we need to wait for the network
-  // to quiten down before doing any further processing
-  await page.waitForNetworkIdleOptional();
 }
 
 /**
@@ -162,9 +121,6 @@ async function scrollUntilStopping(page) {
 }
 
 export {
-  clickElement,
   createBrowserAndPage,
-  removeElement,
   scrollToBottomUntilNoMoreChanges,
-  waitForManualUpdate,
 };

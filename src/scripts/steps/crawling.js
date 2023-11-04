@@ -4,149 +4,167 @@
 
 /* eslint-disable no-loop-func */
 /* eslint-disable no-await-in-loop */
-
-import { VENUE_CRAWLING_CONFIG } from '../../utils/config';
-import { PAGE_LOAD_HELPER_TYPES } from '../../utils/constants';
+/* eslint-disable no-unused-vars */
 
 import {
-  clickElement,
   createBrowserAndPage,
-  removeElement,
   scrollToBottomUntilNoMoreChanges,
-  waitForManualUpdate,
 } from '../../utils/puppeteer';
 
-import {
-  readProgressFile,
-  writeProgressFile,
-} from '../../utils/files/progress';
-
 const MAX_MORE_EVENTS_CLICKS = 10;
+const LONDON_CONCERTS_PAGE = 'https://www.songkick.com/metro-areas/24426-uk-london';
 
-const TIMEOUTS = {
-  COOKIE_BUTTON_TIMEOUT_WAIT_MS: 3000,
-  POST_COOKIE_BUTTON_CLICK_WAIT_MS: 3000,
-  PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS: 5000,
+const SELECTORS = {
+  DATE_PICKERS: '.datepicker-container',
+  DATE_PICKER_SELECT_YEAR: '.ui-datepicker-year',
+  DATE_PICKER_SELECT_MONTH: '.ui-datepicker-month',
+  DATE_PICKER_SUBMIT: '.datepicker-submit',
+  LOAD_MORE_BUTTON: '.next_page:not(.disabled)',
+  EVENT_LIST_CONTAINER: '.metro-area-calendar-listings',
+  ACCEPT_COOKIES_BUTTON: '#onetrust-accept-btn-handler',
 };
 
-// -==============================
-// need a way to parse the lack of event cards here:
-// https://www.thelexington.co.uk/events.php
-
-// will need to use regex or something
-
-// -==============================
-
-// maybe add some kind of filter - you're currently getting everything
-// for this instead of just gigs:
-
-// https://www.thegrace.london/whats-on/
+const TIMEOUTS = {
+  POST_COOKIE_ACK_WAIT_MS: 3000,
+  POST_DATE_PICKER_ELEMENT_CLICK_WAIT_MS: 1000,
+  POST_PAGE_LOAD_WAIT_MS: 5000,
+};
 
 /**
- * Run the script
- * @returns {object} A big blob of results for each venue
+ * Scrape the list of concerts for a given date
+ * @param {string} date The date to grab the concerts for
+ * @returns {object} A big blob of concert data
  */
-async function scrapeVenues() {
-  // load any progress made by a previous run of this script (delete the
-  // progress.txt file if you'd like to start from scratch)
-  const results = await readProgressFile();
-
-  // using the previous results, remove any venues that have already processed from this run
-  const venuesToProcess = await loadVenuesToProcess(results, VENUE_CRAWLING_CONFIG);
-
+async function scrapeConcertList(date) {
   const { browser, page } = await createBrowserAndPage();
 
-  for (let j = 0; j < venuesToProcess.length; j += 1) {
-    const jobConfig = venuesToProcess[j];
+  // Navigate the page to a URL
+  await page.goto(LONDON_CONCERTS_PAGE);
 
-    console.log('*****************************************************');
-    console.log(`Starting crawl for this venue: ${jobConfig.venue}`);
+  console.log('Waiting for the page to load');
+  await page.waitForTimeout(TIMEOUTS.POST_PAGE_LOAD_WAIT_MS);
 
-    const resultsSet = new Set();
+  console.log('Acknowledgeing the cookie modal');
+  await maybeAcknowledgeCookieModal(page);
 
-    // some sites store their events across different distinct
-    // pages, so we process them individually
-    for (let i = 0; i < jobConfig.eventUrls.length; i += 1) {
-      // Navigate the page to a URL
-      await page.goto(jobConfig.eventUrls[i]);
+  console.log('Setting up the date ranges');
+  await setupPagesDateRange(page, date);
 
-      console.log('Setting up page... ');
-      await setupPage(page, jobConfig);
+  // limit the number of times we can click the "more events" button; some websites will
+  // let you browse years into the future, so we need to stop at some point
+  let moreEventsCount = 0;
 
-      // the page load helper may result in a redirect to a new page, so we try
-      // to dismiss the cookie notification, and disable scroll smoothing again
-      console.log('Setting up page again... ');
-      await setupPage(page, jobConfig);
+  console.log('Parsing events');
+  while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
+    console.log('Setting up page... ');
+    await setupPage(page);
 
-      // limit the number of times we can click the "more events" button; some websites will
-      // let you browse years into the future, so we need to stop at some point
-      let moreEventsCount = 0;
+    console.log('Fetching events from page...');
+    const events = await page.$$(SELECTORS.EVENT_LIST_CONTAINER);
 
-      while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
-        console.log('Fetching events from page...');
-        const events = await page.$$(jobConfig.eventCardSelector);
+    // grab the results
 
-        await processPageEvents(browser, jobConfig, events, resultsSet);
-
-        const hasLoadedMore = await maybeLoadMore(page, jobConfig);
-        if (hasLoadedMore) {
-          moreEventsCount += 1;
-        } else {
-          break;
-        }
-      }
+    const hasLoadedMore = await maybeLoadMore(page);
+    if (hasLoadedMore) {
+      moreEventsCount += 1;
+    } else {
+      break;
     }
-
-    results[jobConfig.venue] = convertResultSetToRawJson(resultsSet);
-
-    await writeProgressFile(results);
   }
-
-  await browser.close();
-
-  return results;
 }
 
 /**
- * We store a string in the set to utilise the dedupe logic, but we
- * need to convert back to JSON when storing to a file for ease of
- * processing later
- * @param {Set<string>} resultsSet Set of result string objects which look like - { artist, date }
- * @returns {Array<JSON>} A results set of parsed JSON
+ *
+ * @param page
+ * @param date
  */
-function convertResultSetToRawJson(resultsSet) {
-  return Array.from(resultsSet).map((result) => JSON.parse(result));
+async function setupPagesDateRange(page, date) {
+  // select date pickers
+  const datePickers = await page.$$(SELECTORS.DATE_PICKERS);
+
+  // there should be two date selectors, a "from", and a "to"
+  if (datePickers.length !== 2) {
+    throw new Error('Unexpected number of date pickers', datePickers.length);
+  }
+
+  // select the "from", and "to"
+  await selectMonthAndYear(page, datePickers[0], date);
+  await selectMonthAndYear(page, datePickers[1], date);
+
+  // submit the range
+  const submitDateRangeButton = await page.$(SELECTORS.DATE_PICKER_SUBMIT);
+  if (!submitDateRangeButton) {
+    throw new Error("Couldn't find button to submit date range");
+  }
+
+  await submitDateRangeButton.click();
+
+  await page.waitForTimeout(TIMEOUTS.POST_PAGE_LOAD_WAIT_MS);
+}
+
+/**
+ *
+ * @param datePickerElement
+ * @param page
+ * @param date
+ */
+async function selectMonthAndYear(page, datePickerElement, date) {
+  await datePickerElement.click();
+  await page.waitForTimeout(TIMEOUTS.POST_DATE_PICKER_ELEMENT_CLICK_WAIT_MS);
+
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+
+  await page.select(SELECTORS.DATE_PICKER_SELECT_YEAR, `${year}`);
+  await page.select(SELECTORS.DATE_PICKER_SELECT_MONTH, `${month}`);
+
+  const dayElement = await page.$x(`//a[text()='${day}']`);
+
+  if (dayElement.length !== 1) {
+    throw new Error("Couldn't find day selector");
+  }
+
+  await dayElement[0].click();
+}
+
+/**
+ * Acknowledges a cookie modal if one is present
+ * @param {object} page The browser page object
+ */
+async function maybeAcknowledgeCookieModal(page) {
+  const element = await page.waitForSelectorOptional(
+    SELECTORS.ACCEPT_COOKIES_BUTTON,
+    TIMEOUTS.POST_COOKIE_ACK_WAIT_MS,
+  );
+
+  await element?.evaluate((el) => el.click());
+
+  // wait to make sure the page settles after acking cookies
+  await page.waitForTimeout(TIMEOUTS.POST_COOKIE_ACK_WAIT_MS);
 }
 
 /**
  * Attempts to load more content on to the page
  * @param {object} page The browser's page object
- * @param {object} jobConfig config for the properties needed to run a job for a given venue
  * @returns {boolean} Whether more content was loaded
  */
-async function maybeLoadMore(page, jobConfig) {
-  // if there's nothing more to load, we're done
-  if (!jobConfig.loadMoreButtonSelector) {
-    console.log('No configured "load more" button');
-    return false;
-  }
-
+async function maybeLoadMore(page) {
   console.log('Trying to find the "load more" button...');
   // TODO: we should guarantee that the more events button is clicked at least
   // once, otherwise the underlying DOM may have changed and we might miss events
-  const loadMoreButton = await page.$(jobConfig.loadMoreButtonSelector);
+  const loadMoreButton = await page.$(SELECTORS.LOAD_MORE_BUTTON);
   if (!loadMoreButton) {
     console.log('Could not find a "load more" button');
     return false;
   }
 
-  console.log('Clicking the "load more" button');
   try {
-    await page.click(jobConfig.loadMoreButtonSelector);
+    console.log('Clicking the "load more" button');
+    await page.click(SELECTORS.LOAD_MORE_BUTTON);
 
-    // have to wait for the network to idle before scrolling because the "load more" button
-    // can occasionally load a new page entirely, which will cause any scrolling to crash
-    await page.waitForNetworkIdleOptional();
+    console.log('Waiting for page load to settle');
+    await page.waitForTimeout(TIMEOUTS.POST_PAGE_LOAD_WAIT_MS);
   } catch (err) {
     // TODO: handle this better by checking the visibility of the button
     console.log('Failed to click the "load more" button', err);
@@ -160,120 +178,10 @@ async function maybeLoadMore(page, jobConfig) {
 }
 
 /**
- * For a given selector of events on the page, process each "card" to get the artist, and date
- * @param {object} browser The browser object
- * @param {object} jobConfig config for the properties needed to run a job for a given venue
- * @param {any} events Handles for all "event cards" on the page
- * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
- */
-async function processPageEvents(browser, jobConfig, events, resultsSet) {
-  const task = jobConfig.alternateProcessingConfig
-    ? processOutOfPageEvents(browser, jobConfig, events, resultsSet)
-    : processInPageEvents(jobConfig, events, resultsSet);
-
-  await task;
-}
-
-/**
- * For a given selector of events on the page, process each "card" to get the artist, and date
- * @param {object} jobConfig config for the properties needed to run a job for a given venue
- * @param {any} events Handles for all "event cards" on the page
- * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
- */
-async function processInPageEvents(jobConfig, events, resultsSet) {
-  await events.reduce((acc, event) => acc.then(async () => {
-    try {
-      const artist = await event.$eval(
-        jobConfig.eventCardArtistSelector,
-        (result) => result.textContent.trim(),
-      );
-
-      const rawDate = await event.$eval(
-        jobConfig.eventCardDateSelector,
-        (result) => result.textContent.trim(),
-      );
-
-      const dateWithoutSeparators = rawDate.replaceAll('.', ' ').replaceAll(' / ', ' ').replaceAll(',', ' ');
-
-      const date = dateWithoutSeparators.replace(/\s+/g, ' ');
-
-      const description = jobConfig.eventCardDescriptionSelector ? await event.$eval(
-        jobConfig.eventCardDescriptionSelector,
-        (result) => result.textContent.trim(),
-      ) : undefined;
-
-      const item = JSON.stringify({ artist, date, description });
-
-      console.log('Result:', item);
-
-      resultsSet.add(item);
-    } catch (error) {
-      // TODO: Start tracking how many times we fail, and do
-      // something when that number is too high
-      // This page currently has this issue - https://www.thewaitingroomn16.com/
-      console.log('Failed to process event card...', error);
-    }
-  }), Promise.resolve([]));
-}
-
-/**
- * For a given selector of events on the page, find a link to each event
- * page, visit that page, and pull the artist and date
- * @param {object} browser The browser object
- * @param {object} jobConfig config for the properties needed to run a job for a given venue
- * @param {any} events Handles for all "event cards" on the page
- * @param {Set<object>} resultsSet A set of processed event cards containing an artist and date
- */
-async function processOutOfPageEvents(browser, jobConfig, events, resultsSet) {
-  const links = await events.reduce(async (accumulator, event) => {
-    const localAccumulator = await accumulator;
-
-    const link = await event.$eval(
-      jobConfig.alternateProcessingConfig.newTabLinkSelector,
-      (result) => result.href,
-    );
-
-    localAccumulator.push(link);
-
-    return localAccumulator;
-  }, []);
-
-  await links.reduce(async (accumulator, link) => {
-    const promiseHandle = await accumulator;
-
-    console.log('Create new page to grab event data...');
-    const secondPage = await browser.createNewPage();
-
-    console.log('Go to page...');
-    await secondPage.gotoWithSafeTimeout(link);
-
-    console.log('Setting up page again... ');
-    await setupPage(secondPage, jobConfig);
-
-    // grabbing a handle we know will always exist, then we can re-use the
-    // inPageEvent method to pull the single event details from that page
-    console.log('Grab page body...');
-    const body = await secondPage.$$('body');
-
-    console.log('Processing new page events...');
-    await processInPageEvents(jobConfig, body, resultsSet);
-
-    console.log('Closing tab...');
-    await secondPage.close();
-
-    return promiseHandle;
-  }, []);
-}
-
-/**
  * Sets up the page to be ready for scraping
  * @param {object} page The browser page object
- * @param {object} jobConfig config for the properties needed to run a job for a given venue
  */
-async function setupPage(page, jobConfig) {
-  console.log('Maybe acknowledging cookies...');
-  await maybeAcknowledgeCookieModal(page, jobConfig);
-
+async function setupPage(page) {
   // disables smooth scrolling which can intefere with the programatic scrolling this script does
   console.log('Disabling smooth scrolling...');
   await page.evaluate(() => {
@@ -284,89 +192,6 @@ async function setupPage(page, jobConfig) {
 
   console.log('Scrolling to the bottom of this page...');
   await scrollToBottomUntilNoMoreChanges(page);
-
-  console.log('Maybe execute page load helpers...');
-  await maybeExecutePageLoadHelpers(page, jobConfig.pageLoadHelper);
 }
 
-/**
- * Acknowledges a cookie modal if one is present
- * @param {object} page The browser page object
- * @param {object} jobConfig config for the properties needed to run a job for a given venue
- */
-async function maybeAcknowledgeCookieModal(page, jobConfig) {
-  if (!jobConfig.cookiePolicyModalAcceptButtonSelector) {
-    return;
-  }
-
-  await clickElement(
-    page,
-    jobConfig.cookiePolicyModalAcceptButtonSelector,
-    TIMEOUTS.COOKIE_BUTTON_TIMEOUT_WAIT_MS,
-  );
-
-  // we wait here after acking the cookie because some pages will
-  // refresh after clicking it; after refreshing, the DOM won't exist,
-  // so the next step of appending the style will crash the app
-  await page.waitForTimeout(TIMEOUTS.POST_COOKIE_BUTTON_CLICK_WAIT_MS);
-}
-
-/**
- * Executes a page loading helper strategy if needed
- * @param {object} page The browser page object
- * @param {object} helperConfig config representing which helpers are needed to load the page
- */
-async function maybeExecutePageLoadHelpers(page, helperConfig) {
-  if (!helperConfig || !helperConfig.type) {
-    return;
-  }
-
-  switch (helperConfig.type) {
-    case PAGE_LOAD_HELPER_TYPES.REMOVE_ELEMENT:
-      console.log('Running REMOVE_ELEMENT page load helper...');
-      await removeElement(
-        page,
-        helperConfig.options.selector,
-      );
-      break;
-    case PAGE_LOAD_HELPER_TYPES.CLICK_ELEMENT:
-      console.log('Running CLICK_ELEMENT page load helper...');
-      await clickElement(
-        page,
-        helperConfig.options.selector,
-        TIMEOUTS.PAGE_LOAD_HELPER_SELECTOR_TIMEOUT_WAIT_MS,
-      );
-      break;
-    case PAGE_LOAD_HELPER_TYPES.MANUAL_INTERACTION:
-      console.log('Running MANUAL_INTERACTION page load helper...');
-      await waitForManualUpdate(
-        page,
-      );
-      break;
-    default:
-      throw new Error('Unrecognised page load helper');
-  }
-}
-
-/**
- * Loads the venues that need processing, given how many venues
- * have already been processed
- * @param {object} currentProgressResults A blob representing venues that
- * have already been processed
- * @param {object} configs All of the configs that _could_ be tracked by this script
- * @returns {object} The config that will be processed by our script
- */
-async function loadVenuesToProcess(currentProgressResults, configs) {
-  const alreadyProcessedVenues = Object.keys(currentProgressResults);
-
-  const venuesToProcess = configs.reduce((acc, config) => {
-    if (!alreadyProcessedVenues.includes(config.venue)) {
-      acc.push(config);
-    }
-    return acc;
-  }, []);
-
-  return venuesToProcess;
-}
-
-export default scrapeVenues;
+export default scrapeConcertList;
