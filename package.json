@@ -5,7 +5,7 @@
   "type": "module",
   "//": "experimental-specifier-resolution=node allows me to not have to specify .../index.js in my imports",
   "scripts": {
-    "_exploreEvents": "node --experimental-specifier-resolution=node src/scripts/exploreEvents",
+    "_exploreEvents": "node --experimental-specifier-resolution=node src/exploreEvents",
     "lint": "eslint src",
     "script:exploreEvents": "npm run lint && npm run _exploreEvents"
   },

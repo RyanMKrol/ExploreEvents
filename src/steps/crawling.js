@@ -7,7 +7,7 @@
 import {
   createBrowserAndPage,
   scrollToBottomUntilNoMoreChanges,
-} from '../../utils/puppeteer';
+} from '../utils/puppeteer';
 
 const MAX_MORE_EVENTS_CLICKS = 10;
 
