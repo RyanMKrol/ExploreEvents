@@ -37,7 +37,7 @@ const TIMEOUTS = {
  * @returns {object} A big blob of concert data
  */
 async function scrapeConcertList(date) {
-  const { page } = await createBrowserAndPage();
+  const { browser, page } = await createBrowserAndPage();
 
   // Navigate the page to a URL
   await page.goto(LONDON_CONCERTS_PAGE);
@@ -72,6 +72,8 @@ async function scrapeConcertList(date) {
       break;
     }
   }
+
+  await browser.close();
 
   return results;
 }

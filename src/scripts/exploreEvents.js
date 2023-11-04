@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 import scrapeConcertList from './steps/crawling';
+import filterDate from './steps/filter';
 
 /**
  * Run the script
  */
 (async function main() {
   const dates = [
-    new Date('December 02 2023'),
-    new Date('December 03 2023'),
+    new Date('December 06 2023'),
   ];
 
   const results = await dates.reduce(async (acc, date) => {
@@ -20,5 +20,7 @@ import scrapeConcertList from './steps/crawling';
     return localAcc;
   }, Promise.resolve({}));
 
-  console.log(results);
+  const filteredResults = filterDate(results);
+
+  console.log(filteredResults);
 }());
