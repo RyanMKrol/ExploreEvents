@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-/* eslint-disable */
-
 import scrapeConcertList from './steps/crawling';
 import filterDate from './steps/filter';
 import createReportFile from './steps/report';
+import transformResults from './steps/transform';
 
 /**
  * Run the script
@@ -20,14 +19,15 @@ import createReportFile from './steps/report';
     const resultForDate = await scrapeConcertList(date);
     localAcc.push({
       date: date.toLocaleDateString('en-GB'),
-      events: resultForDate
-    })
+      events: resultForDate,
+    });
 
     return localAcc;
   }, Promise.resolve([]));
 
-
   const filteredResults = filterDate(results);
 
-  createReportFile({results: filteredResults});
+  const newResults = await transformResults(filteredResults);
+
+  createReportFile({ results: newResults });
 }());

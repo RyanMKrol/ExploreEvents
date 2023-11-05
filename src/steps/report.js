@@ -5,7 +5,8 @@ const TEMPLATE_FILE_LOC = `${process.cwd()}/template/index.html`;
 const OUTPUT_FILE_LOC = `${process.cwd()}/output/index.html`;
 
 /**
- * @param {Array<object>} data Looks like [{artist, venue}, ...]
+ * Create an html file to report the output
+ * @param {Array<object>} data Looks like [{artist, venue, profile}, ...]
  */
 function createReportFile(data) {
   const source = fs.readFileSync(TEMPLATE_FILE_LOC, 'utf8');

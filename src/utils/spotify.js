@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import fetch from 'node-fetch';
+import sleepMs from './sleep';
 
 /**
  * Grab an access token to use in future Spotify requests
@@ -28,4 +29,53 @@ async function getAccessToken() {
   return spotifyTokenResponse.access_token;
 }
 
-export default getAccessToken;
+/**
+ *
+ * @param artist
+ * @param token
+ */
+async function getArtistProfilePageUrl(artist, token) {
+  const data = await fetch(`https://api.spotify.com/v1/search?q=${artist}&type=artist&market=GB&limit=1`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+    .then((response) => response.json());
+
+  if (data.error
+    || !data.artists
+    || !data.artists.items
+    || data.artists.items.length !== 1
+    || !data.artists.items[0].external_urls
+    || !data.artists.items[0].external_urls.spotify
+  ) {
+    throw new Error('Failed to request data from Spotify');
+  }
+
+  return data.artists.items[0].external_urls.spotify;
+}
+
+/**
+ * Gets a bunch of artist profile page URLs using batching to get around Spotify rate limits
+ * @param {Array<string>} artistNames an array of artist names
+ * @param {string} token an API token to call Spotify with
+ * @returns {object} a map of name to profile URL
+ */
+async function getArtistProfilePageUrls(artistNames, token) {
+  const LIMIT_PER_SECOND = 20;
+  const WAIT_BETWEEN_CALL = 1000 / LIMIT_PER_SECOND;
+
+  return artistNames.reduce(async (acc, name) => {
+    const localAcc = await acc;
+    const url = await getArtistProfilePageUrl(name, token);
+
+    localAcc[name] = url;
+
+    await sleepMs(WAIT_BETWEEN_CALL);
+
+    return localAcc;
+  }, Promise.resolve({}));
+}
+
+export { getAccessToken, getArtistProfilePageUrls };
