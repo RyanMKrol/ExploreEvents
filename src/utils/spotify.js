@@ -30,9 +30,10 @@ async function getAccessToken() {
 }
 
 /**
- *
- * @param artist
- * @param token
+ * Gets an artist's profile URL
+ * @param {string} artist an artist's name
+ * @param {string} token an API token to call Spotify with
+ * @returns {string} A URL to the artist's profile
  */
 async function getArtistProfilePageUrl(artist, token) {
   const data = await fetch(`https://api.spotify.com/v1/search?q=${artist}&type=artist&market=GB&limit=1`, {
