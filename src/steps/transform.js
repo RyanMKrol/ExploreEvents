@@ -17,7 +17,7 @@ async function transformResults(data) {
 
     const newEventsData = entry.events.map((item) => ({
       ...item,
-      profile: artistProfileMapping[item.artist],
+      profileUrl: artistProfileMapping[item.artist],
     }));
 
     localAcc.push({

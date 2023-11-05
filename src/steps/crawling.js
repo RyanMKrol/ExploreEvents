@@ -21,6 +21,7 @@ const SELECTORS = {
   EVENT_CONTAINERS: 'li.event-listings-element',
   EVENT_CONTAINERS_ARTISTS: 'p.artists strong',
   EVENT_CONTAINERS_LOCATION: 'p.location',
+  EVENT_CONTAINERS_LINK: 'a.event-link',
   ACCEPT_COOKIES_BUTTON: '#onetrust-accept-btn-handler',
   LOAD_MORE_BUTTON: '.next_page:not(.disabled)',
 };
@@ -86,6 +87,12 @@ async function scrapeConcertList(date) {
 function parseEvents(eventSelectors) {
   return eventSelectors.reduce(async (acc, event) => {
     const localAccumulator = await acc;
+
+    const eventUrl = await event.$eval(
+      SELECTORS.EVENT_CONTAINERS_LINK,
+      (result) => result.href,
+    );
+
     const artist = await event.$eval(
       SELECTORS.EVENT_CONTAINERS_ARTISTS,
       (result) => result.textContent.trim(),
@@ -98,7 +105,7 @@ function parseEvents(eventSelectors) {
 
     const venue = plaintextVenue.replace(/\s+/g, ' ');
 
-    localAccumulator.push({ artist, venue });
+    localAccumulator.push({ eventUrl, artist, venue });
 
     return localAccumulator;
   }, Promise.resolve([]));
