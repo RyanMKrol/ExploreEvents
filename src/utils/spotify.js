@@ -42,16 +42,23 @@ async function getArtistProfilePageUrl(artist, token) {
       Authorization: `Bearer ${token}`,
     },
   })
-    .then((response) => response.json());
+    .then((response) => response.json())
+    .catch((err) => {
+      console.log(artist);
+      console.log(err);
+      console.log('there was an error');
+    });
 
-  if (data.error
+  if (!data
+    || data.error
     || !data.artists
     || !data.artists.items
     || data.artists.items.length !== 1
     || !data.artists.items[0].external_urls
     || !data.artists.items[0].external_urls.spotify
   ) {
-    throw new Error('Failed to request data from Spotify');
+    console.error('***** Failed to get a profile page for', artist);
+    return '';
   }
 
   return data.artists.items[0].external_urls.spotify;
@@ -64,7 +71,7 @@ async function getArtistProfilePageUrl(artist, token) {
  * @returns {object} a map of name to profile URL
  */
 async function getArtistProfilePageUrls(artistNames, token) {
-  const LIMIT_PER_SECOND = 20;
+  const LIMIT_PER_SECOND = 30;
   const WAIT_BETWEEN_CALL = 1000 / LIMIT_PER_SECOND;
 
   return artistNames.reduce(async (acc, name) => {

@@ -9,6 +9,7 @@ const BLACKLISTED_VENUE_STRINGS = [
   'New Cross',
   'Shepperton',
   'Twickenham',
+  'The Windmill',
 ];
 
 /**

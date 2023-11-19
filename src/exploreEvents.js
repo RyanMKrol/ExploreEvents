@@ -27,7 +27,7 @@ import transformResults from './steps/transform';
 
   const filteredResults = filterDate(results);
 
-  const newResults = await transformResults(filteredResults);
+  const resultsWithProfileLinks = await transformResults(filteredResults);
 
-  createReportFile({ results: newResults });
+  createReportFile({ results: resultsWithProfileLinks });
 }());
