@@ -8,6 +8,7 @@ import filterDate from '../steps/filter';
 
 import { deleteSqsMessage, pullMessage } from '../utils/aws/sqs';
 import { sendTaskSuccess, sendTaskFailure } from '../utils/aws/stepFunctions';
+import addItemsToDynamo from '../utils/aws/dynamo';
 
 const QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/228666294391/ConcertDataCrawlStart';
 const WAIT_BETWEEN_POLL_MS = 1000 * 5;
@@ -27,9 +28,8 @@ async function pollQueue() {
 
         try {
           const messageData = JSON.parse(message.Body);
-          const messageDate = new Date(messageData.date);
 
-          await crawl(messageDate);
+          await crawl(messageData.date);
 
           sendTaskSuccess(message.MessageAttributes.TaskToken.StringValue);
         } catch (messageProcessingError) {
@@ -38,6 +38,8 @@ async function pollQueue() {
         } finally {
           deleteSqsMessage(QUEUE_URL, message.ReceiptHandle);
         }
+
+        return acc;
       }, Promise.resolve());
     } else {
       console.log('No messages received');
@@ -51,18 +53,25 @@ async function pollQueue() {
 
 /**
  * Method to crawl data using a given date
- * @param {Date} date the date to crawl for
+ * @param {string} dateString the date to crawl for
  */
-async function crawl(date) {
-  const crawledData = await scrapeConcertList(date);
+async function crawl(dateString) {
+  const date = new Date(dateString);
 
-  console.log('original data items', crawledData.length);
+  const crawledData = await scrapeConcertList(date);
 
   const filteredResults = filterDate(crawledData);
 
-  console.log('filtered data items', filteredResults.length);
+  const dynamoItems = filteredResults.map((item) => {
+    const dynamoId = `${dateString}-${item.artist}-${item.venue}`;
+    return {
+      ...item,
+      id: dynamoId,
+      date: dateString,
+    };
+  });
 
-  // store the filtered data
+  await addItemsToDynamo('ConcertDataItems', dynamoItems);
 }
 
 /**
