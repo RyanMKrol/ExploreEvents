@@ -68,7 +68,7 @@ async function decorate() {
     profileUrl: artistProfilePageMap[item.artist],
   } : item));
 
-  await addItemsToDynamo(STORAGE_TABLE_NAME, writeBackInformation);
+  await addItemsToDynamo(STORAGE_TABLE_NAME, writeBackInformation, true);
 }
 
 /**

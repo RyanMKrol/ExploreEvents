@@ -30,9 +30,10 @@ async function scanTable(tableName) {
  * Add multiple items to a dynamoDb table
  * @param {string} tableName the table to add to
  * @param {Array<object>} items the items to add to the table
+ * @param {boolean} shouldOverwrite whether an item in the db should be overwritten
  */
-async function addItemsToDynamo(tableName, items) {
-  const addItemsFn = (item) => { addItemToDynamoDB(tableName, item); };
+async function addItemsToDynamo(tableName, items, shouldOverwrite = false) {
+  const addItemsFn = (item) => { addItemToDynamoDB(tableName, item, shouldOverwrite); };
 
   await callFunctionOnItemsWithThrottle(addItemsFn, items, MAX_WRITES_PER_SECOND);
 }
@@ -42,25 +43,27 @@ async function addItemsToDynamo(tableName, items) {
  * @param {string} tableName - The name of the DynamoDB table to which the item will be added.
  * @param {object} item - The item to add to the DynamoDB table. This
  * object should match the schema of the table.
+ * @param {boolean} shouldOverwrite whether an item in the db should be overwritten
  */
-async function addItemToDynamoDB(tableName, item) {
+async function addItemToDynamoDB(tableName, item, shouldOverwrite) {
   console.log('Writing to dynamo...');
+
   const params = {
     TableName: tableName,
     Item: item,
-    ConditionExpression: 'attribute_not_exists(id)',
   };
 
-  await DYNAMO_CLIENT.put(params).promise()
-    .then((data) => {
-      console.log('Created item with data', data);
-    }).catch((err) => {
-      if (err.code === 'ConditionalCheckFailedException') {
-        console.log('Item already exists.');
-      } else {
-        throw err;
-      }
-    });
+  if (!shouldOverwrite) {
+    params.ConditionExpression = 'attribute_not_exists(id)';
+  }
+
+  await DYNAMO_CLIENT.put(params).promise().catch((err) => {
+    if (err.code === 'ConditionalCheckFailedException') {
+      console.log('Item already exists.');
+    } else {
+      throw err;
+    }
+  });
 }
 
 export { addItemsToDynamo, scanTable };
