@@ -1,8 +1,10 @@
-import pollQueue from './jobs/crawl';
+import pollCrawlQueue from './jobs/crawl';
+import pollDecorateQueue from './jobs/decorate';
 
 /**
  * Setup SQS listeners
  */
 (async function main() {
-  pollQueue();
+  pollCrawlQueue();
+  pollDecorateQueue();
 }());

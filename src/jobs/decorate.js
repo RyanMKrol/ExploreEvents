@@ -1,21 +1,18 @@
 /**
- * This cron job will wait for a message from the ConcertDataCrawlStart
- * queue, and begin crawling once a message comes in.
+ * This cron job will wait for a message from the ConcertDataDecorationStart
+ * queue, and begin decorating data once a message comes in.
  */
-
-import scrapeConcertList from '../steps/crawling';
-import filterDate from '../steps/filter';
 
 import { deleteSqsMessage, pullMessage } from '../utils/aws/sqs';
 import { sendTaskSuccess, sendTaskFailure } from '../utils/aws/stepFunctions';
-import { addItemsToDynamo } from '../utils/aws/dynamo';
+import { scanTable } from '../utils/aws/dynamo';
 
-const QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/228666294391/ConcertDataCrawlStart';
+const QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/228666294391/ConcertDataDecorationStart';
 const WAIT_BETWEEN_POLL_MS = 1000 * 5;
 const STORAGE_TABLE_NAME = 'ConcertDataItems';
 
 /**
- * Polls the queue to start crawling for concert data
+ * Polls the queue to start decorating crawled concert data
  */
 async function pollQueue() {
   const sqsCallback = async (err, data) => {
@@ -28,9 +25,7 @@ async function pollQueue() {
         console.log('Message Received', message);
 
         try {
-          const messageData = JSON.parse(message.Body);
-
-          await crawl(messageData.date);
+          await decorate();
 
           sendTaskSuccess(message.MessageAttributes.TaskToken.StringValue);
         } catch (messageProcessingError) {
@@ -53,26 +48,11 @@ async function pollQueue() {
 }
 
 /**
- * Method to crawl data using a given date
- * @param {string} dateString the date to crawl for
+ * Method to decorate concert data
  */
-async function crawl(dateString) {
-  const date = new Date(dateString);
-
-  const crawledData = await scrapeConcertList(date);
-
-  const filteredResults = filterDate(crawledData);
-
-  const dynamoItems = filteredResults.map((item) => {
-    const dynamoId = `${dateString}-${item.artist}-${item.venue}`;
-    return {
-      ...item,
-      id: dynamoId,
-      date: dateString,
-    };
-  });
-
-  await addItemsToDynamo(STORAGE_TABLE_NAME, dynamoItems);
+async function decorate() {
+  const data = await scanTable(STORAGE_TABLE_NAME);
+  console.log(data);
 }
 
 /**

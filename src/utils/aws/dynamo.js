@@ -13,6 +13,22 @@ const DYNAMO_CLIENT = new AWS.DynamoDB.DocumentClient();
 const MAX_WRITES_PER_SECOND = 5;
 
 /**
+ * Scan given table, fetching all items
+ * @param {string} tableName name of table
+ * @returns {Promise<Array<object>>} all of the items in the table
+ */
+async function scanTable(tableName) {
+  const params = {
+    TableName: tableName,
+  };
+
+  return DYNAMO_CLIENT.scan(params).promise().then((data) => data.Items).catch((err) => {
+    console.error('Unable to scan the table. Error JSON:', JSON.stringify(err, null, 2));
+    throw err;
+  });
+}
+
+/**
  * Add multiple items to a dynamoDb table
  * @param {string} tableName the table to add to
  * @param {Array<object>} items the items to add to the table
@@ -42,4 +58,4 @@ async function addItemToDynamoDB(tableName, item) {
     }).catch((err) => { throw err; });
 }
 
-export default addItemsToDynamo;
+export { addItemsToDynamo, scanTable };
