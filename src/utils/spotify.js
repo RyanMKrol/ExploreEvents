@@ -71,7 +71,7 @@ async function getArtistProfilePageUrl(artist, token) {
  * @returns {object} a map of name to profile URL
  */
 async function getArtistProfilePageUrls(artistNames, token) {
-  const LIMIT_PER_SECOND = 30;
+  const LIMIT_PER_SECOND = 10;
   const WAIT_BETWEEN_CALL = 1000 / LIMIT_PER_SECOND;
 
   return artistNames.reduce(async (acc, name) => {

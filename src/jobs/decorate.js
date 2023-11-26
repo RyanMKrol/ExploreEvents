@@ -5,7 +5,8 @@
 
 import { deleteSqsMessage, pullMessage } from '../utils/aws/sqs';
 import { sendTaskSuccess, sendTaskFailure } from '../utils/aws/stepFunctions';
-import { scanTable } from '../utils/aws/dynamo';
+import { addItemsToDynamo, scanTable } from '../utils/aws/dynamo';
+import { getAccessToken, getArtistProfilePageUrls } from '../utils/spotify';
 
 const QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/228666294391/ConcertDataDecorationStart';
 const WAIT_BETWEEN_POLL_MS = 1000 * 5;
@@ -51,8 +52,23 @@ async function pollQueue() {
  * Method to decorate concert data
  */
 async function decorate() {
-  const data = await scanTable(STORAGE_TABLE_NAME);
-  console.log(data);
+  const rawData = await scanTable(STORAGE_TABLE_NAME);
+
+  // remove items that have already been processed
+  const dataToDecorate = rawData.filter((item) => typeof item.profileUrl === 'undefined');
+
+  const spotifyToken = await getAccessToken();
+
+  const artistNames = dataToDecorate.map((item) => item.artist);
+
+  const artistProfilePageMap = await getArtistProfilePageUrls(artistNames, spotifyToken);
+
+  const writeBackInformation = dataToDecorate.map((item) => (artistProfilePageMap[item.artist] ? {
+    ...item,
+    profileUrl: artistProfilePageMap[item.artist],
+  } : item));
+
+  await addItemsToDynamo(STORAGE_TABLE_NAME, writeBackInformation);
 }
 
 /**

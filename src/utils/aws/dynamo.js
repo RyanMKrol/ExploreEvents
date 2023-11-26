@@ -18,9 +18,7 @@ const MAX_WRITES_PER_SECOND = 5;
  * @returns {Promise<Array<object>>} all of the items in the table
  */
 async function scanTable(tableName) {
-  const params = {
-    TableName: tableName,
-  };
+  const params = { TableName: tableName };
 
   return DYNAMO_CLIENT.scan(params).promise().then((data) => data.Items).catch((err) => {
     console.error('Unable to scan the table. Error JSON:', JSON.stringify(err, null, 2));
@@ -50,12 +48,19 @@ async function addItemToDynamoDB(tableName, item) {
   const params = {
     TableName: tableName,
     Item: item,
+    ConditionExpression: 'attribute_not_exists(id)',
   };
 
   await DYNAMO_CLIENT.put(params).promise()
     .then((data) => {
       console.log('Created item with data', data);
-    }).catch((err) => { throw err; });
+    }).catch((err) => {
+      if (err.code === 'ConditionalCheckFailedException') {
+        console.log('Item already exists.');
+      } else {
+        throw err;
+      }
+    });
 }
 
 export { addItemsToDynamo, scanTable };
