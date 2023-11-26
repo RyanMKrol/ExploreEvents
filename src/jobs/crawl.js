@@ -11,7 +11,7 @@ import { sendTaskSuccess, sendTaskFailure } from '../utils/aws/stepFunctions';
 import { addItemsToDynamo } from '../utils/aws/dynamo';
 
 const QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/228666294391/ConcertDataCrawlStart';
-const WAIT_BETWEEN_POLL_MS = 1000 * 5;
+const WAIT_BETWEEN_POLL_MS = process.env.DEV ? 1000 * 5 : 1000 * 60 * 60;
 const STORAGE_TABLE_NAME = 'ConcertDataItems';
 
 /**
