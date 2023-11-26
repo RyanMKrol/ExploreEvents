@@ -9,7 +9,7 @@ import { addItemsToDynamo, scanTable } from '../utils/aws/dynamo';
 import { getAccessToken, getArtistProfilePageUrls } from '../utils/spotify';
 
 const QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/228666294391/ConcertDataDecorationStart';
-const WAIT_BETWEEN_POLL_MS = process.env.DEV ? 1000 * 5 : 1000 * 60 * 60;
+const WAIT_BETWEEN_POLL_MS = process.env.DEV === '1' ? 1000 * 5 : 1000 * 60 * 5;
 const STORAGE_TABLE_NAME = 'ConcertDataItems';
 
 /**

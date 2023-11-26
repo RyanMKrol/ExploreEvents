@@ -7,7 +7,7 @@ import puppeteer from 'puppeteer';
  * @returns {object} An object containing a browser and page
  */
 async function createBrowserAndPage() {
-  const browserParams = process.env.DEV
+  const browserParams = process.env.DEV === '1'
     ? { headless: false }
     : { executablePath: '/usr/bin/chromium-browser' };
 
