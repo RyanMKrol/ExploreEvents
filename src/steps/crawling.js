@@ -28,7 +28,7 @@ const SELECTORS = {
 
 const TIMEOUTS = {
   POST_COOKIE_ACK_WAIT_MS: 3000,
-  POST_DATE_PICKER_ELEMENT_CLICK_WAIT_MS: 1000,
+  POST_DATE_PICKER_ELEMENT_CLICK_WAIT_MS: 5000,
   POST_PAGE_LOAD_WAIT_MS: 5000,
 };
 
@@ -166,6 +166,8 @@ async function selectMonthAndYear(page, datePickerElement, date) {
   }
 
   await dayElement[0].click();
+
+  await page.waitForTimeout(TIMEOUTS.POST_DATE_PICKER_ELEMENT_CLICK_WAIT_MS);
 }
 
 /**

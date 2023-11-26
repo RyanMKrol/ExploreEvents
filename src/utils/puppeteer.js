@@ -7,7 +7,11 @@ import puppeteer from 'puppeteer';
  * @returns {object} An object containing a browser and page
  */
 async function createBrowserAndPage() {
-  const browser = await puppeteer.launch({ headless: false });
+  const browserParams = process.env.DEV
+    ? { headless: false }
+    : { executablePath: '/usr/bin/chromium-browser' };
+
+  const browser = await puppeteer.launch(browserParams);
 
   browser.createNewPage = async function createNewPage() {
     const page = await this.newPage();
