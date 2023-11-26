@@ -40,43 +40,45 @@ const TIMEOUTS = {
 async function scrapeConcertList(date) {
   const { browser, page } = await createBrowserAndPage();
 
-  // Navigate the page to a URL
-  await page.goto(LONDON_CONCERTS_PAGE);
+  try {
+    // Navigate the page to a URL
+    await page.goto(LONDON_CONCERTS_PAGE);
 
-  console.log('Waiting for the page to load');
-  await page.waitForTimeout(TIMEOUTS.POST_PAGE_LOAD_WAIT_MS);
+    console.log('Waiting for the page to load');
+    await page.waitForTimeout(TIMEOUTS.POST_PAGE_LOAD_WAIT_MS);
 
-  console.log('Acknowledgeing the cookie modal');
-  await maybeAcknowledgeCookieModal(page);
+    console.log('Acknowledgeing the cookie modal');
+    await maybeAcknowledgeCookieModal(page);
 
-  console.log('Setting up the date ranges');
-  await setupPagesDateRange(page, date);
+    console.log('Setting up the date ranges');
+    await setupPagesDateRange(page, date);
 
-  let results = [];
-  let moreEventsCount = 0;
+    let results = [];
+    let moreEventsCount = 0;
 
-  while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
-    console.log('Setting up page... ');
-    await setupPage(page);
+    while (moreEventsCount < MAX_MORE_EVENTS_CLICKS) {
+      console.log('Setting up page... ');
+      await setupPage(page);
 
-    console.log('Fetching events from page...');
-    const eventElements = await page.$$(SELECTORS.EVENT_CONTAINERS);
+      console.log('Fetching events from page...');
+      const eventElements = await page.$$(SELECTORS.EVENT_CONTAINERS);
 
-    const parsedEvents = await parseEvents(eventElements);
+      const parsedEvents = await parseEvents(eventElements);
 
-    results = [...results, ...parsedEvents];
+      results = [...results, ...parsedEvents];
 
-    const hasLoadedMore = await maybeLoadMore(page);
-    if (hasLoadedMore) {
-      moreEventsCount += 1;
-    } else {
-      break;
+      const hasLoadedMore = await maybeLoadMore(page);
+      if (hasLoadedMore) {
+        moreEventsCount += 1;
+      } else {
+        break;
+      }
     }
+
+    return results;
+  } finally {
+    await browser.close();
   }
-
-  await browser.close();
-
-  return results;
 }
 
 /**

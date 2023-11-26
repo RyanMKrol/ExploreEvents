@@ -14,20 +14,12 @@ const BLACKLISTED_VENUE_STRINGS = [
 
 /**
  * Filters the data we've collected, removing any events we're not interested in
- * @param {Array<object>} data Looks like [{date, events: [{artist, venue}, ...]}, ...]
+ * @param {Array<object>} events Looks like [{artist, venue, eventsUrl}, ...]
  * @returns {Array<object>} the input data with certain items removed
  */
-function filterDate(data) {
-  const dataFilteredWithBlacklistedVenues = data.map((dateEventsObject) => {
-    const { date, events } = dateEventsObject;
-
-    const filteredData = events
-      .filter((event) => !BLACKLISTED_VENUE_STRINGS.some((string) => event.venue.includes(string)));
-
-    return { date, events: filteredData };
-  });
-
-  return dataFilteredWithBlacklistedVenues;
+function filterDate(events) {
+  return events
+    .filter((event) => !BLACKLISTED_VENUE_STRINGS.some((string) => event.venue.includes(string)));
 }
 
 export default filterDate;
